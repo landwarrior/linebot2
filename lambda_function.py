@@ -183,22 +183,29 @@ def reply_message(message: str) -> None:
 
 def push_message(message: str) -> None:
     """プッシュ通知."""
+    user_list = []
+    for item in dynamo.scan(**{'TableName': 'users'})['Items']:
+        if item['enabled']['BOOL']:
+            user_list.append(item['user_id']['S'])
+
+    LOGGER.info(f"users: {user_list}")
     headers = {
         'Content-Type': 'application/json',
         "Authorization": f"Bearer {os.environ['access_token']}",
     }
     url = 'https://api.line.me/v2/bot/message/multicast'
-    payload = {
-        "to": ["U9a9500aef51aed3bb61689509a71632b"],
-        'messages': [
-            {
-                'type': 'text',
-                'text': message,
-            }
-        ]
-    }
-    res = requests.post(url, data=json.dumps(payload).encode('utf-8'), headers=headers)
-    LOGGER.info(f"[RESPONSE] [STATUS]{res.status_code} [HEADER]{res.headers} [CONTENT]{res.content}")
+    if len(user_list) > 0:
+        payload = {
+            "to": user_list,
+            'messages': [
+                {
+                    'type': 'text',
+                    'text': message,
+                }
+            ]
+        }
+        res = requests.post(url, data=json.dumps(payload).encode('utf-8'), headers=headers)
+        LOGGER.info(f"[RESPONSE] [STATUS]{res.status_code} [HEADER]{res.headers} [CONTENT]{res.content}")
 
 
 def add_user(user_id: str) -> None:
@@ -554,8 +561,7 @@ def lambda_handler(event, context):
     elif (len(args) > 0 and getattr(MethodGroup, args[0], None)):
         LOGGER.info(f"method: {args[0]}, param: {args[1:]}")
         getattr(MethodGroup, args[0])(args[1:])
-    user_list = dynamo.scan(**{'TableName': 'users'})['Items']
-    LOGGER.info(f"users: {user_list}")
+
     payload = {
         'messages': [
             {
