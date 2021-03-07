@@ -1,7 +1,42 @@
+"""DynamoDBを使って色々やる.
+
+GET:
+{"TableName": "users"}
+POST:
+{
+    "TableName": "users",
+    "Item": {
+        "user_id": {"S": "hogehoge3"}
+    }
+}
+PUT: (ただし、キーしかないのでPOSTと同じ感じになる)
+{
+    "TableName": "users",
+    "Key": {
+        "user_id": {"S": "value"}
+    }
+}
+DELETE:
+{
+    "TableName": "users",
+    "Key": {
+        "user_id": {"S": "value"}
+    }
+}
+"""
 import boto3
 import json
+import logging
 
-print('Loading function')
+LOGGER = logging.getLogger()
+LOGGER.setLevel(logging.INFO)
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.INFO)
+formatter = logging.Formatter(
+    '%(asctime)s [%(levelname)s] %(message)s [%(filename)s in %(lineno)d]')
+stream_handler.setFormatter(formatter)
+LOGGER.addHandler(stream_handler)
+
 dynamo = boto3.client('dynamodb')
 
 
@@ -25,7 +60,10 @@ def lambda_handler(event, context):
     PUT, or DELETE request respectively, passing in the payload to the
     DynamoDB API as a JSON body.
     '''
-    #print("Received event: " + json.dumps(event, indent=2))
+    LOGGER.info('--LAMBDA START--')
+    LOGGER.info(f"event: {json.dumps(event)}")
+    LOGGER.info(f"context: {context}")
+    LOGGER.info(f"body: {event.get('body')}")
 
     operations = {
         'DELETE': lambda dynamo, x: dynamo.delete_item(**x),
