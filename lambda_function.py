@@ -244,7 +244,7 @@ def delete_user(user_id: str) -> None:
 class CronGroup:
 
     @staticmethod
-    async def ait(*args) -> None:
+    async def ait() -> None:
         """アットマークITの本日の総合ランキングを返します."""
         LOGGER.info('--START-- ait')
         url = 'https://www.atmarkit.co.jp/json/ait/rss_rankindex_all_day.json'
@@ -257,7 +257,7 @@ class CronGroup:
         msg = []
         for item in json_data['data']:
             if item:
-                msg.append(f"<{item['link']}|{item['title'].replace(' ', '')}>")
+                msg.append(f"{item['title'].replace(' ', '')}\n{item['link']}")
             if len(msg) >= 10:
                 break
         message += '\n'.join(msg)
@@ -265,7 +265,7 @@ class CronGroup:
         LOGGER.info('--END-- ait')
 
     @staticmethod
-    def itmediaYesterday(args: list) -> None:
+    async def itmediaYesterday() -> None:
         """ITmediaの昨日のニュースをお伝えします.
 
         無ければ無いって言います。
@@ -292,7 +292,7 @@ class CronGroup:
         push_message(message)
 
     @staticmethod
-    async def zdJapan(args: list) -> None:
+    async def zdJapan() -> None:
         """ZDNet Japanの昨日のニュースを取得.
 
         無ければ無いって言います。
@@ -322,7 +322,7 @@ class CronGroup:
         push_message(message)
 
     @staticmethod
-    def weeklyReport(args: list) -> None:
+    async def weeklyReport() -> None:
         """JPCERT から Weekly Report を取得.
 
         水曜日とかじゃないと何も返ってきません。
@@ -341,7 +341,7 @@ class CronGroup:
             push_message(message)
 
     @staticmethod
-    def noticeAlert(*args) -> None:
+    async def noticeAlert() -> None:
         """当日発表の注意喚起もしくは脆弱性関連情報を取得.
 
         何もなきゃ何も言いません。
@@ -491,7 +491,6 @@ class MethodGroup:
 
 async def runner():
     await CronGroup.ait()
-    await CronGroup.itmediaRanking()
     await CronGroup.itmediaYesterday()
     await CronGroup.zdJapan()
     await CronGroup.weeklyReport()
