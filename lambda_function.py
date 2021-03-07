@@ -26,12 +26,14 @@ DELETE:
     }
 }
 """
+import asyncio
 import boto3
 import datetime
 import json
 import logging
 import os
 import random
+import re
 
 import requests
 from bs4 import BeautifulSoup
@@ -60,6 +62,95 @@ HOTPEPPER = os.environ.get('hotpepper')
 TOKEN = ''
 
 
+def help() -> None:
+    """メソッド一覧."""
+    methods = [a for a in dir(MethodGroup) if '_' not in a]
+    bubbles = []
+    for _method in methods:
+        description = re.sub(' {1,}', '', getattr(MethodGroup, _method).__doc__)
+        args = re.split(r'\.\n', description)
+        title = args[0]
+        # 末尾の改行も含まれている
+        description = '\n'.join((''.join(args[1:])).split('\n')[1:])
+        bubbles.append({
+            "type": "bubble",
+            "size": "kilo",
+            "header": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": title,
+                        "color": "#ffffff",
+                        "align": "start",
+                        "size": "md",
+                        "gravity": "center"
+                    }
+                ],
+                "backgroundColor": "#27ACB2",
+                "paddingAll": "15px",
+                "action": {
+                    "type": "postback",
+                    "label": _method,
+                    "data": _method,
+                    "displayText": _method
+                }
+            },
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "box",
+                        "layout": "horizontal",
+                        "contents": [
+                          {
+                              "type": "text",
+                              "text": description,
+                              "color": "#8C8C8C",
+                              "size": "sm",
+                              "wrap": True
+                          }
+                        ],
+                        "flex": 1
+                    }
+                ],
+                "spacing": "md",
+                "paddingAll": "12px",
+            },
+            "styles": {
+                "footer": {
+                    "separator": False
+                }
+            }
+        })
+
+    headers = {
+        'Content-Type': 'application/json',
+        "Authorization": f"Bearer {os.environ['access_token']}",
+    }
+    url = 'https://api.line.me/v2/bot/message/reply'
+    payload = {
+        'replyToken': TOKEN,
+        'messages': [
+            {
+                "type": "flex",
+                "altText": "コマンド一覧",
+                "contents": {
+                    "type": "carousel",
+                    "contents": bubbles
+                }
+            }
+        ]
+    }
+
+    res = requests.post(url, data=json.dumps(
+        payload).encode('utf-8'), headers=headers)
+    LOGGER.info(
+        f"[RESPONSE] [STATUS]{res.status_code} [HEADER]{res.headers} [CONTENT]{res.content}")
+
+
 def respond(err, res=None):
     return {
         'statusCode': '400' if err else '200',
@@ -70,9 +161,28 @@ def respond(err, res=None):
     }
 
 
+def reply_message(message: str) -> None:
+    """返信."""
+    headers = {
+        'Content-Type': 'application/json',
+        "Authorization": f"Bearer {os.environ['access_token']}",
+    }
+    url = 'https://api.line.me/v2/bot/message/reply'
+    payload = {
+        'replyToken': TOKEN,
+        'messages': [
+            {
+                'type': 'text',
+                'text': message,
+            }
+        ]
+    }
+    res = requests.post(url, data=json.dumps(payload).encode('utf-8'), headers=headers)
+    LOGGER.info(f"[RESPONSE] [STATUS]{res.status_code} [HEADER]{res.headers} [CONTENT]{res.content}")
+
+
 def push_message(message: str) -> None:
     """プッシュ通知."""
-
     headers = {
         'Content-Type': 'application/json',
         "Authorization": f"Bearer {os.environ['access_token']}",
@@ -99,6 +209,7 @@ def add_user(user_id: str) -> None:
             "enabled": {"BOOL": False}
         }
     }
+    LOGGER.info(f"[DynamoDB insert] user_id: {user_id}")
     dynamo.put_item(**param)
 
 
@@ -126,6 +237,27 @@ def delete_user(user_id: str) -> None:
 class CronGroup:
 
     @staticmethod
+    async def ait(*args) -> None:
+        """アットマークITの本日の総合ランキングを返します."""
+        LOGGER.info('--START-- ait')
+        url = 'https://www.atmarkit.co.jp/json/ait/rss_rankindex_all_day.json'
+        LOGGER.debug(f"GET {url} header: {HEADER}")
+        ret = requests.get(url, headers=HEADER)
+        json_str = ret.content.decode('sjis').replace(
+            'rankingindex(', '').replace(')', '').replace('\'', '"')
+        json_data = json.loads(json_str)
+        message = '【 アットマークITの本日の総合ランキング10件 】\n'
+        msg = []
+        for item in json_data['data']:
+            if item:
+                msg.append(f"<{item['link']}|{item['title'].replace(' ', '')}>")
+            if len(msg) >= 10:
+                break
+        message += '\n'.join(msg)
+        push_message(message)
+        LOGGER.info('--END-- ait')
+
+    @staticmethod
     def itmediaYesterday(args: list) -> None:
         """ITmediaの昨日のニュースをお伝えします.
 
@@ -150,7 +282,7 @@ class CronGroup:
             message += '\n'.join(msg)
         else:
             message = 'ITmediaの昨日のニュースはありませんでした。'
-        MethodGroup._send_data(message)
+        push_message(message)
 
     @staticmethod
     async def zdJapan(args: list) -> None:
@@ -180,7 +312,7 @@ class CronGroup:
             message += '\n'.join(msg)
         else:
             message = 'ZDNet Japanの昨日のニュースはありませんでした。'
-        MethodGroup._send_data(message)
+        push_message(message)
 
     @staticmethod
     def weeklyReport(args: list) -> None:
@@ -199,7 +331,7 @@ class CronGroup:
             wkrp = jpcert.select('div.contents')[0].select('li')
             for i, item in enumerate(wkrp, start=1):
                 message += f"{i}. {item.text}\n"
-            MethodGroup._send_data(message)
+            push_message(message)
 
     @staticmethod
     def noticeAlert(*args) -> None:
@@ -249,37 +381,14 @@ class CronGroup:
                         warning_list.append(f"{title} {link}")
         if len(notice_list) > 0:
             notice += '\n'.join(notice_list)
-            MethodGroup._send_data(notice)
+            push_message(notice)
         if len(warning_list) > 0:
             warning += '\n'.join(warning_list)
-            MethodGroup._send_data(warning)
+            push_message(warning)
 
 
 class MethodGroup:
     """やりたい処理を定義."""
-
-    @staticmethod
-    def _send_data(message: str) -> None:
-        """LINE へ送信.
-
-        :param str message: メッセージ
-        """
-        headers = {
-            'Content-Type': 'application/json',
-            "Authorization": f"Bearer {os.environ['access_token']}",
-        }
-        url = 'https://api.line.me/v2/bot/message/reply'
-        payload = {
-            'replyToken': TOKEN,
-            'messages': [
-                {
-                    'type': 'text',
-                    'text': message,
-                }
-            ]
-        }
-        res = requests.post(url, data=json.dumps(payload).encode('utf-8'), headers=headers)
-        LOGGER.info(f"[RESPONSE] [STATUS]{res.status_code} [HEADER]{res.headers} [CONTENT]{res.content}")
 
     @staticmethod
     def lunch(args: list) -> None:
@@ -314,7 +423,7 @@ class MethodGroup:
         else:
             message = '検索結果がありません\n'
         message += '　　Powered by ホットペッパー Webサービス'
-        MethodGroup._send_data(message)
+        reply_message(message)
 
     @staticmethod
     def qiita(args: list) -> None:
@@ -329,7 +438,7 @@ class MethodGroup:
         for d in data:
             msg.append(f"{d['title']}\n{d['url']}")
         message = '\n'.join(msg)
-        MethodGroup._send_data(message)
+        reply_message(message)
 
     @staticmethod
     def nomitai(args: list) -> None:
@@ -370,25 +479,16 @@ class MethodGroup:
             shop = random.choice(shops)
             message = f"{shop['name']}\n{shop['urls']['pc']}\n"
         message += '　　Powered by ホットペッパー Webサービス'
-        MethodGroup._send_data(message)
+        reply_message(message)
 
-    @staticmethod
-    def yahoo(args: list) -> None:
-        """ヤフーニュースを取得します.
 
-        主要なヤフーニュースにのみ対応しています。
-        """
-        ret = requests.get('https://news.yahoo.co.jp', headers=HEADER)
-        # utf8 以外だったら以下みたいにデコードする
-        # html = ret.content.decode('sjis')
-        yahoo = BeautifulSoup(ret.text, 'html.parser')
-        topics = yahoo.select('ul.topicsList_main')[0].select('li>a')
-        message = '主要なニュースをお伝えします\n'
-        msg = []
-        for topic in topics:
-            msg.append(f"{topic.text}\n{topic.get('href')}")
-        message += '\n'.join(msg)
-        MethodGroup._send_data(message)
+async def runner():
+    await CronGroup.ait()
+    await CronGroup.itmediaRanking()
+    await CronGroup.itmediaYesterday()
+    await CronGroup.zdJapan()
+    await CronGroup.weeklyReport()
+    await CronGroup.noticeAlert()
 
 
 def lambda_handler(event, context):
@@ -401,11 +501,18 @@ def lambda_handler(event, context):
     PUT, or DELETE request respectively, passing in the payload to the
     DynamoDB API as a JSON body.
     '''
+    global TOKEN
     LOGGER.info('--LAMBDA START--')
     LOGGER.info(f"event: {json.dumps(event)}")
     LOGGER.info(f"context: {context}")
-    body = event.get('body')
+    try:
+        body = json.loads(event.get('body'))
+    except Exception:
+        body = {}
     LOGGER.info(f"body: {body}")
+    if isinstance(event, dict) and event.get('source') == 'aws.events':
+        # CloudWatch Event のやつ
+        asyncio.run(runner())
     # DynamoDBを使う時のデフォルトの使い方
     # operations = {
     #     'DELETE': lambda dynamo, x: dynamo.delete_item(**x),
@@ -420,14 +527,33 @@ def lambda_handler(event, context):
     #     return respond(None, operations[operation](dynamo, payload))
     # else:
     #     return respond(ValueError('Unsupported method "{}"'.format(operation)))
+    # LINE follow user
     if isinstance(body, dict) and body.get('events', [{'type': ''}])[0]['type'] == 'follow':
+        LOGGER.info(f"KOKOMADEKITA: {body['events'][0]['source']}")
         if body['events'][0]['source']['type'] == 'user':
             user_id = body['events'][0]['source']['userId']
             add_user(user_id)
+    # LINE unfollow user
     if isinstance(body, dict) and body.get('events', [{'type': ''}])[0]['type'] == 'unfollow':
         if body['events'][0]['source']['type'] == 'user':
             user_id = body['events'][0]['source']['userId']
             delete_user(user_id)
+    text = ''
+    # LINE webhook
+    if isinstance(body, dict):
+        for event in body.get('events', []):
+            TOKEN = event.get('replyToken', '')
+            text = event.get('message', {}).get('text')
+            # postback の場合はメソッドのデフォルトで動作するように設定
+            if event.get('postback', {}).get('data'):
+                text = event['postback']['data']
+    text = text.replace('　', ' ')
+    args = text.split(' ')
+    if len(args) > 0 and args[0] == 'コマンド':
+        help()
+    elif (len(args) > 0 and getattr(MethodGroup, args[0], None)):
+        LOGGER.info(f"method: {args[0]}, param: {args[1:]}")
+        getattr(MethodGroup, args[0])(args[1:])
     user_list = dynamo.scan(**{'TableName': 'users'})['Items']
     LOGGER.info(f"users: {user_list}")
     payload = {
