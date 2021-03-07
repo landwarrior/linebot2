@@ -14,8 +14,7 @@ PUT: (ただし、キーしかないのでPOSTと同じ感じになる)
 {
     "TableName": "users",
     "Key": {
-        "user_id": {"S": "value"},
-        "enabled": {"BOOL": false}
+        "user_id": {"S": "value"}
     }
 }
 DELETE:
@@ -60,6 +59,7 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36'''
 HOTPEPPER = os.environ.get('hotpepper')
 
 TOKEN = ''
+USER_ID = ''
 
 
 def help() -> None:
@@ -223,12 +223,13 @@ def add_user(user_id: str) -> None:
 def update_user(user_id: str, enabled: bool) -> None:
     param = {
         "TableName": "users",
-        "Key": {
+        "Item": {
             "user_id": {"S": user_id},
             "enabled": {"BOOL": enabled}
         }
     }
-    dynamo.update_item(**param)
+    # dynamo.update_item(**param)
+    dynamo.put_item(**param)
 
 
 def delete_user(user_id: str) -> None:
@@ -239,6 +240,10 @@ def delete_user(user_id: str) -> None:
         }
     }
     dynamo.delete_item(**param)
+
+
+def toggle_teiki(enabled: bool) -> None:
+    update_user(USER_ID, enabled)
 
 
 class CronGroup:
@@ -488,6 +493,23 @@ class MethodGroup:
         message += '　　Powered by ホットペッパー Webサービス'
         reply_message(message)
 
+    @staticmethod
+    def teiki(args: list) -> None:
+        """定期実行.
+
+        有効にしたら、毎日正午にニュース等を取得します。
+        有効かどうかをチェックするには、このメソッドを実行してください。
+        """
+        is_enabled = False
+        for item in dynamo.scan(**{"TableName": "users"})['Items']:
+            if item['user_id']['S'] == USER_ID:
+                is_enabled = item['enabled']['BOOL']
+        if is_enabled:
+            reply_message("有効になっています\n無効にするには、「定期無効」と入力してください")
+        else:
+            reply_message("無効になっています\n有効にするには、「定期有効」と入力してください")
+        return
+
 
 async def runner():
     await CronGroup.ait()
@@ -507,12 +529,13 @@ def lambda_handler(event, context):
     PUT, or DELETE request respectively, passing in the payload to the
     DynamoDB API as a JSON body.
     '''
-    global TOKEN
+    global TOKEN, USER_ID
     LOGGER.info('--LAMBDA START--')
     LOGGER.info(f"event: {json.dumps(event)}")
     LOGGER.info(f"context: {context}")
     try:
         body = json.loads(event.get('body'))
+        USER_ID = body.get('events', [])[0]['source']['userId']
     except Exception:
         body = {}
     LOGGER.info(f"body: {body}")
@@ -535,7 +558,6 @@ def lambda_handler(event, context):
     #     return respond(ValueError('Unsupported method "{}"'.format(operation)))
     # LINE follow user
     if isinstance(body, dict) and body.get('events', [{'type': ''}])[0]['type'] == 'follow':
-        LOGGER.info(f"KOKOMADEKITA: {body['events'][0]['source']}")
         if body['events'][0]['source']['type'] == 'user':
             user_id = body['events'][0]['source']['userId']
             add_user(user_id)
@@ -557,6 +579,10 @@ def lambda_handler(event, context):
     args = text.split(' ')
     if len(args) > 0 and args[0] == 'コマンド':
         help()
+    elif len(args) > 0 and args[0] == '定期無効':
+        toggle_teiki(False)
+    elif len(args) > 0 and args[0] == '定期有効':
+        toggle_teiki(True)
     elif (len(args) > 0 and getattr(MethodGroup, args[0], None)):
         LOGGER.info(f"method: {args[0]}, param: {args[1:]}")
         getattr(MethodGroup, args[0])(args[1:])
