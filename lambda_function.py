@@ -33,6 +33,7 @@ import logging
 import os
 import random
 import re
+import xml.etree.ElementTree as ET
 
 import requests
 from bs4 import BeautifulSoup
@@ -398,6 +399,39 @@ class CronGroup:
             warning += '\n'.join(warning_list)
             push_message(warning)
 
+    @staticmethod
+    async def techCrunchJapan() -> None:
+        """Tech Crunch Japanのニュースを取得する.
+
+        RSSフィードの情報を取得するので、ちゃんと出来るか不安"""
+        res = requests.get('https://jp.techcrunch.com/feed/')
+        root = ET.fromstring(res.content.decode('utf8'))
+        message = "Tech Crunch Japan のRSSフィードのニュースです。\n"
+        msg = []
+        for child in root[0]:
+            if 'item' in child.tag.lower():
+                msg.append(child[0].text + '\n' + child[1].text)
+        if len(msg) == 0:
+            message += 'ニュースを取得できませんでした。'
+        else:
+            message += '\n'.join(msg)
+        push_message(message)
+
+    @staticmethod
+    async def techRepublicJapan() -> None:
+        res = requests.get('https://japan.techrepublic.com/rss/latest/')
+        root = ET.fromstring(res.content.decode('utf8'))
+        message = "TechRepublic Japan のRSSフィードのニュースです。\n"
+        msg = []
+        for child in root:
+            if 'item' in child.tag.lower():
+                msg.append(child[3].text + '\n' + child[4].text)
+        if len(msg) == 0:
+            message += 'ニュースを取得できませんでした。'
+        else:
+            message += '\n'.join(msg)
+        push_message(message)
+
 
 class MethodGroup:
     """やりたい処理を定義."""
@@ -517,6 +551,8 @@ async def runner():
     await CronGroup.zdJapan()
     await CronGroup.weeklyReport()
     await CronGroup.noticeAlert()
+    await CronGroup.techCrunchJapan()
+    await CronGroup.techRepublicJapan()
 
 
 def lambda_handler(event, context):
