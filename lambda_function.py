@@ -581,8 +581,10 @@ def lambda_handler(event, context):
         help()
     elif len(args) > 0 and args[0] == '定期無効':
         toggle_teiki(False)
+        reply_message('定期実行を無効にしました')
     elif len(args) > 0 and args[0] == '定期有効':
         toggle_teiki(True)
+        reply_message('定期実行を有効にしました')
     elif (len(args) > 0 and getattr(MethodGroup, args[0], None)):
         LOGGER.info(f"method: {args[0]}, param: {args[1:]}")
         getattr(MethodGroup, args[0])(args[1:])
