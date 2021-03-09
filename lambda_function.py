@@ -182,6 +182,100 @@ def reply_message(message: str) -> None:
     LOGGER.info(f"[RESPONSE] [STATUS]{res.status_code} [HEADER]{res.headers} [CONTENT]{res.content}")
 
 
+def bubble_push(messages: list) -> None:
+    """カルーセル（バブル）でプッシュ通知.
+
+    引数の形式は以下
+    [
+        {
+            'title': 'str',
+            'uri': 'str',
+            'description': 'str'
+        }, ...
+    ]
+    """
+    user_list = []
+    for item in dynamo.scan(**{'TableName': 'users'})['Items']:
+        if item['enabled']['BOOL']:
+            user_list.append(item['user_id']['S'])
+
+    headers = {
+        'Content-Type': 'application/json',
+        "Authorization": f"Bearer {os.environ['access_token']}",
+    }
+    url = 'https://api.line.me/v2/bot/message/multicast'
+    bubbles = []
+    if len(user_list) > 0:
+        for message in messages:
+            bubbles.append({
+                "type": "bubble",
+                "size": "kilo",
+                "header": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                        {
+                            "type": "text",
+                            "text": message.get('title'),
+                            "color": "#ffffff",
+                            "align": "start",
+                            "size": "md",
+                            "gravity": "center"
+                        }
+                    ],
+                    "backgroundColor": "#27ACB2",
+                    "paddingAll": "5px",
+                    "action": {
+                        "type": "uri",
+                        "label": message.get('title'),
+                        "uri": message.get('uri'),
+                    }
+                },
+                "body": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                              {
+                                  "type": "text",
+                                  "text": message.get('description'),
+                                  "color": "#8C8C8C",
+                                  "size": "sm",
+                                  "wrap": True
+                              }
+                            ],
+                            "flex": 1
+                        }
+                    ],
+                    "spacing": "md",
+                    "paddingAll": "12px",
+                },
+                "styles": {
+                    "footer": {
+                        "separator": False
+                    }
+                }
+            })
+        payload = {
+            "to": user_list,
+            'messages': [
+                {
+                    "type": "flex",
+                    "altText": "通知",
+                    "contents": {
+                        "type": "carousel",
+                        "contents": messages
+                    }
+                }
+            ]
+        }
+        res = requests.post(url, data=json.dumps(payload).encode('utf-8'), headers=headers)
+        LOGGER.info(f"[RESPONSE] [STATUS]{res.status_code} [HEADER]{res.headers} [CONTENT]{res.content}")
+
+
 def push_message(message: str) -> None:
     """プッシュ通知."""
     user_list = []
@@ -189,7 +283,6 @@ def push_message(message: str) -> None:
         if item['enabled']['BOOL']:
             user_list.append(item['user_id']['S'])
 
-    LOGGER.info(f"users: {user_list}")
     headers = {
         'Content-Type': 'application/json',
         "Authorization": f"Bearer {os.environ['access_token']}",
@@ -412,25 +505,36 @@ class CronGroup:
             if 'item' in child.tag.lower():
                 msg.append(child[0].text + '\n' + child[1].text)
         if len(msg) == 0:
-            message += 'ニュースを取得できませんでした。'
+            message += '直近のニュースはありませんでした'
         else:
             message += '\n'.join(msg)
         push_message(message)
 
     @staticmethod
     async def techRepublicJapan() -> None:
+        yesterday = datetime.date.today() - datetime.timedelta(days=1)
+        yesterday = datetime.datetime.strptime(yesterday.strftime('%Y%m%d'), '%Y%m%d')
         res = requests.get('https://japan.techrepublic.com/rss/latest/')
         root = ET.fromstring(res.content.decode('utf8'))
-        message = "TechRepublic Japan のRSSフィードのニュースです。\n"
+        message = "TechRepublic Japan のRSSフィードのニュースです。"
         msg = []
         for child in root:
+            if len(msg) >= 12:
+                break
             if 'item' in child.tag.lower():
-                msg.append(child[3].text + '\n' + child[4].text)
+                date_obj = datetime.datetime.strptime(child[1].text[0:10], '%Y-%m-%d')
+                if yesterday <= date_obj:
+                    bubble = {
+                        'title': child[3].text,
+                        'uri': child[4].text,
+                        'description': child[4].text[0:50] + '...'
+                    }
+                    msg.append(bubble)
         if len(msg) == 0:
-            message += 'ニュースを取得できませんでした。'
-        else:
-            message += '\n'.join(msg)
+            message += '\n直近のニュースはありませんでした'
         push_message(message)
+        if len(msg) > 0:
+            bubble_push(msg)
 
 
 class MethodGroup:
