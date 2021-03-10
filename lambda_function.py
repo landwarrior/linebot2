@@ -83,13 +83,13 @@ def help() -> None:
                     {
                         "type": "text",
                         "text": title,
-                        "color": "#ffffff",
+                        "color": "#2f3739",
                         "align": "start",
                         "size": "md",
                         "gravity": "center"
                     }
                 ],
-                "backgroundColor": "#27ACB2",
+                "backgroundColor": "#9bcfd1",
                 "paddingAll": "15px",
                 "action": {
                     "type": "postback",
@@ -209,7 +209,7 @@ def bubble_push(messages: list) -> None:
         for message in messages:
             bubbles.append({
                 "type": "bubble",
-                "size": "kilo",
+                # "size": "kilo",
                 "header": {
                     "type": "box",
                     "layout": "vertical",
@@ -220,6 +220,7 @@ def bubble_push(messages: list) -> None:
                             "color": "#ffffff",
                             "align": "start",
                             "size": "md",
+                            "wrap": True,
                             "gravity": "center"
                         }
                     ],
@@ -227,7 +228,7 @@ def bubble_push(messages: list) -> None:
                     "paddingAll": "5px",
                     "action": {
                         "type": "uri",
-                        "label": message.get('title'),
+                        "label": message.get('title')[0:20],
                         "uri": message.get('uri'),
                     }
                 },
@@ -247,6 +248,11 @@ def bubble_push(messages: list) -> None:
                                   "wrap": True
                               }
                             ],
+                            "action": {
+                                "type": "uri",
+                                "label": message.get('title', '')[0:20],
+                                "uri": message.get('uri', ''),
+                            },
                             "flex": 1
                         }
                     ],
@@ -267,7 +273,7 @@ def bubble_push(messages: list) -> None:
                     "altText": "通知",
                     "contents": {
                         "type": "carousel",
-                        "contents": messages
+                        "contents": bubbles
                     }
                 }
             ]
@@ -503,12 +509,22 @@ class CronGroup:
         msg = []
         for child in root[0]:
             if 'item' in child.tag.lower():
-                msg.append(child[0].text + '\n' + child[1].text)
+                bubble = {
+                    'title': child[0].text,
+                    'uri': child[1].text,
+                    'description': '説明はありません'
+                }
+                for mago in child:
+                    if 'encoded' in mago.tag.lower():
+                        step1 = re.sub(r'^\<\!\[CDATA.*1024px" />', '', mago.text)
+                        step2 = re.sub(r"<[^>]*?>", '', step1)
+                        bubble['description'] = step2[0:100] + '…'
+                msg.append(bubble)
         if len(msg) == 0:
             message += '直近のニュースはありませんでした'
-        else:
-            message += '\n'.join(msg)
         push_message(message)
+        if len(msg) > 0:
+            bubble_push(msg)
 
     @staticmethod
     async def techRepublicJapan() -> None:
@@ -527,7 +543,7 @@ class CronGroup:
                     bubble = {
                         'title': child[3].text,
                         'uri': child[4].text,
-                        'description': child[4].text[0:50] + '...'
+                        'description': re.sub('<.*>', '', child[5].text)
                     }
                     msg.append(bubble)
         if len(msg) == 0:
@@ -678,7 +694,7 @@ def lambda_handler(event, context):
         USER_ID = body.get('events', [])[0]['source']['userId']
     except Exception:
         body = {}
-    LOGGER.info(f"body: {body}")
+    LOGGER.info(f"body: {json.dumps(body)}")
     if isinstance(event, dict) and event.get('source') == 'aws.events':
         # CloudWatch Event のやつ
         asyncio.run(runner())
