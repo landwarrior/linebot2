@@ -217,14 +217,14 @@ def bubble_push(messages: list) -> None:
                         {
                             "type": "text",
                             "text": message.get('title'),
-                            "color": "#ffffff",
+                            "color": "#2f3739",
                             "align": "start",
                             "size": "md",
                             "wrap": True,
                             "gravity": "center"
                         }
                     ],
-                    "backgroundColor": "#27ACB2",
+                    "backgroundColor": "#9bcfd1",
                     "paddingAll": "5px",
                     "action": {
                         "type": "uri",
@@ -278,6 +278,7 @@ def bubble_push(messages: list) -> None:
                 }
             ]
         }
+        LOGGER.info(f"[REQUEST] param: {json.dumps(payload)}")
         res = requests.post(url, data=json.dumps(payload).encode('utf-8'), headers=headers)
         LOGGER.info(f"[RESPONSE] [STATUS]{res.status_code} [HEADER]{res.headers} [CONTENT]{res.content}")
 
