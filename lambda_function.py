@@ -31,12 +31,13 @@ import datetime
 import json
 import logging
 import os
-import random
 import re
 import xml.etree.ElementTree as ET
 
 import requests
 from bs4 import BeautifulSoup
+
+from ReplyMethodGroup import MethodGroup
 
 LOGGER = logging.getLogger()
 LOGGER.setLevel(logging.INFO)
@@ -63,70 +64,7 @@ TOKEN = ''
 USER_ID = ''
 
 
-def help() -> None:
-    """メソッド一覧."""
-    methods = [a for a in dir(MethodGroup) if '_' not in a]
-    bubbles = []
-    for _method in methods:
-        description = re.sub(' {1,}', '', getattr(MethodGroup, _method).__doc__)
-        args = re.split(r'\.\n', description)
-        title = args[0]
-        # 末尾の改行も含まれている
-        description = '\n'.join((''.join(args[1:])).split('\n')[1:])
-        bubbles.append({
-            "type": "bubble",
-            "size": "kilo",
-            "header": {
-                "type": "box",
-                "layout": "vertical",
-                "contents": [
-                    {
-                        "type": "text",
-                        "text": title,
-                        "color": "#2f3739",
-                        "align": "start",
-                        "size": "md",
-                        "gravity": "center"
-                    }
-                ],
-                "backgroundColor": "#9bcfd1",
-                "paddingAll": "15px",
-                "action": {
-                    "type": "postback",
-                    "label": _method,
-                    "data": _method,
-                    "displayText": _method
-                }
-            },
-            "body": {
-                "type": "box",
-                "layout": "vertical",
-                "contents": [
-                    {
-                        "type": "box",
-                        "layout": "horizontal",
-                        "contents": [
-                          {
-                              "type": "text",
-                              "text": description,
-                              "color": "#8C8C8C",
-                              "size": "sm",
-                              "wrap": True
-                          }
-                        ],
-                        "flex": 1
-                    }
-                ],
-                "spacing": "md",
-                "paddingAll": "12px",
-            },
-            "styles": {
-                "footer": {
-                    "separator": False
-                }
-            }
-        })
-
+def reply_bubble(bubbles: list) -> None:
     headers = {
         'Content-Type': 'application/json',
         "Authorization": f"Bearer {os.environ['access_token']}",
@@ -145,11 +83,9 @@ def help() -> None:
             }
         ]
     }
-
-    res = requests.post(url, data=json.dumps(
-        payload).encode('utf-8'), headers=headers)
-    LOGGER.info(
-        f"[RESPONSE] [STATUS]{res.status_code} [HEADER]{res.headers} [CONTENT]{res.content}")
+    LOGGER.info(f"[REQUEST] [URL]{url} [PAYLOAD]{json.dumps(payload, ensure_ascii=False)}")
+    res = requests.post(url, data=json.dumps(payload).encode('utf-8'), headers=headers)
+    LOGGER.info(f"[RESPONSE] [STATUS]{res.status_code} [HEADER]{res.headers} [CONTENT]{res.content}")
 
 
 def respond(err, res=None):
@@ -321,14 +257,24 @@ def add_user(user_id: str) -> None:
     dynamo.put_item(**param)
 
 
-def update_user(user_id: str, enabled: bool) -> None:
+def update_user(user_id: str, params: dict) -> None:
+    """ユーザー情報更新.html
+
+    :param str user_id: 対象のユーザーID
+    :param dict params: ユーザーに対して登録するパラメータを指定する
+
+        {
+            "enabled": {"BOOL": True},
+            ...
+        }
+    """
     param = {
         "TableName": "users",
         "Item": {
             "user_id": {"S": user_id},
-            "enabled": {"BOOL": enabled}
         }
     }
+    param['Item'].update(params)
     # dynamo.update_item(**param)
     dynamo.put_item(**param)
 
@@ -344,7 +290,11 @@ def delete_user(user_id: str) -> None:
 
 
 def toggle_teiki(enabled: bool) -> None:
-    update_user(USER_ID, enabled)
+    """定期実行の有効化、もしくは無効化."""
+    params = {
+        'enabled': {'BOOL': enabled}
+    }
+    update_user(USER_ID, params)
 
 
 class CronGroup:
@@ -506,7 +456,7 @@ class CronGroup:
         RSSフィードの情報を取得するので、ちゃんと出来るか不安"""
         res = requests.get('https://jp.techcrunch.com/feed/')
         root = ET.fromstring(res.content.decode('utf8'))
-        message = "Tech Crunch Japan のRSSフィードのニュースです。\n"
+        message = "Tech Crunch Japan のRSSフィードのニュースです。"
         msg = []
         for child in root[0]:
             if 'item' in child.tag.lower():
@@ -522,7 +472,7 @@ class CronGroup:
                         bubble['description'] = step2[0:100] + '…'
                 msg.append(bubble)
         if len(msg) == 0:
-            message += '直近のニュースはありませんでした'
+            message += '\n直近のニュースはありませんでした'
         push_message(message)
         if len(msg) > 0:
             bubble_push(msg)
@@ -552,118 +502,6 @@ class CronGroup:
         push_message(message)
         if len(msg) > 0:
             bubble_push(msg)
-
-
-class MethodGroup:
-    """やりたい処理を定義."""
-
-    @staticmethod
-    def lunch(args: list) -> None:
-        """ランチ営業店舗検索.
-
-        lunchコマンドの後にスペース区切りで二つ以上キーワードを入力すると場所での検索も可能です。
-        一つの場合はデフォルト座標付近での検索となります。
-        """
-        _param = {
-            'key': HOTPEPPER,
-            'large_service_area': 'SS10',  # 関東
-            'range': '3',
-            'order': '2',
-            'type': 'lite',
-            'format': 'json',
-            'count': '100',
-            'lunch': '1',
-        }
-        if not args or len(args) == 1:
-            _param['lat'] = os.environ['default_lat']
-            _param['lng'] = os.environ['default_lng']
-        if len(args) > 0:
-            _param['keyword'] = ' '.join(list(args))
-        hotpepper = requests.get(
-            'http://webservice.recruit.co.jp/hotpepper/gourmet/v1/',
-            params=_param,
-            headers=HEADER)
-        shops = hotpepper.json()['results']['shop']
-        if len(shops) > 0:
-            shop = random.choice(shops)
-            message = f'{shop["name"]}\n{shop["urls"]["pc"]}\n'
-        else:
-            message = '検索結果がありません\n'
-        message += '　　Powered by ホットペッパー Webサービス'
-        reply_message(message)
-
-    @staticmethod
-    def qiita(args: list) -> None:
-        """Qiita新着記事取得.
-
-        qiitaコマンドでQiitaの新着記事を3件取得します。
-        """
-        res = requests.get('https://qiita.com/api/v2/items?page=1&per_page=3',
-                           headers=HEADER)
-        data = res.json()
-        msg = []
-        for d in data:
-            msg.append(f"{d['title']}\n{d['url']}")
-        message = '\n'.join(msg)
-        reply_message(message)
-
-    @staticmethod
-    def nomitai(args: list) -> None:
-        """居酒屋検索.
-
-        nomitaiコマンドの後にスペース区切りで二つ以上キーワードを入力すると場所での検索も可能です。
-        一つの場合はデフォルト座標付近での検索となります。
-        """
-        _param = {
-            'key': HOTPEPPER,
-            'large_service_area': 'SS10',  # 関東
-            'range': '5',
-            'order': '2',
-            'type': 'lite',
-            'format': 'json',
-            'count': '100',
-        }
-        if not args or len(args) == 1:
-            _param['lat'] = os.environ['default_lat']
-            _param['lng'] = os.environ['default_lng']
-            if not args:
-                # デフォルトは居酒屋
-                _param['genre'] = 'G001'
-        if len(args) > 0:
-            _param['keyword'] = ' '.join(list(args))
-        if len(args) >= 2:
-            # 範囲を絞る
-            _param['range'] = 3
-
-        hotpepper = requests.get(
-            'http://webservice.recruit.co.jp/hotpepper/gourmet/v1/',
-            params=_param,
-            headers=HEADER)
-        shops = hotpepper.json()['results']['shop']
-        if len(shops) == 0:
-            message = '検索結果がありません\n'
-        else:
-            shop = random.choice(shops)
-            message = f"{shop['name']}\n{shop['urls']['pc']}\n"
-        message += '　　Powered by ホットペッパー Webサービス'
-        reply_message(message)
-
-    @staticmethod
-    def teiki(args: list) -> None:
-        """定期実行.
-
-        有効にしたら、毎日正午にニュース等を取得します。
-        有効かどうかをチェックするには、このメソッドを実行してください。
-        """
-        is_enabled = False
-        for item in dynamo.scan(**{"TableName": "users"})['Items']:
-            if item['user_id']['S'] == USER_ID:
-                is_enabled = item['enabled']['BOOL']
-        if is_enabled:
-            reply_message("有効になっています\n無効にするには、「定期無効」と入力してください")
-        else:
-            reply_message("無効になっています\n有効にするには、「定期有効」と入力してください")
-        return
 
 
 async def runner():
@@ -732,19 +570,24 @@ def lambda_handler(event, context):
             # postback の場合はメソッドのデフォルトで動作するように設定
             if event.get('postback', {}).get('data'):
                 text = event['postback']['data']
-    text = text.replace('　', ' ')
+    text = text.replace('　', ' ').replace('\n', ' ')
     args = text.split(' ')
+    methodGroup = MethodGroup(dynamo, USER_ID)
     if len(args) > 0 and args[0] == 'コマンド':
-        help()
+        reply_bubble(methodGroup._help())
     elif len(args) > 0 and args[0] == '定期無効':
         toggle_teiki(False)
         reply_message('定期実行を無効にしました')
     elif len(args) > 0 and args[0] == '定期有効':
         toggle_teiki(True)
         reply_message('定期実行を有効にしました')
-    elif (len(args) > 0 and getattr(MethodGroup, args[0], None)):
-        LOGGER.info(f"method: {args[0]}, param: {args[1:]}")
-        getattr(MethodGroup, args[0])(args[1:])
+    else:
+        func = methodGroup._method_search(args[0])
+        if func:
+            LOGGER.info(f"method: {func}, param: {args[1:]}")
+            message = getattr(methodGroup, func)(args[1:])
+            if message:
+                reply_message(message)
 
     payload = {
         'messages': [
