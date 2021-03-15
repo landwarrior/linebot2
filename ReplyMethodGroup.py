@@ -119,7 +119,7 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36'''
     def lunch(self, args: list) -> None:
         """ランチ営業店舗検索.
 
-        lunchコマンドの後にスペース区切りで二つ以上キーワードを入力すると場所での検索も可能です。
+        スペース区切りもしくは改行区切りで二つ以上キーワードを入力すると場所での検索も可能です。
         一つの場合はデフォルト座標付近での検索となります。
         """
         _param = {
@@ -153,7 +153,7 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36'''
     def qiita(self, args: list) -> None:
         """Qiita新着記事取得.
 
-        qiitaコマンドでQiitaの新着記事を3件取得します。
+        Qiitaの新着記事を3件取得します。
         """
         res = requests.get('https://qiita.com/api/v2/items?page=1&per_page=3',
                            headers=self.HEADER)
@@ -167,7 +167,7 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36'''
     def nomitai(self, args: list) -> None:
         """居酒屋検索.
 
-        nomitaiコマンドの後にスペース区切りで二つ以上キーワードを入力すると場所での検索も可能です。
+        スペース区切りもしくは改行区切りで二つ以上キーワードを入力すると場所での検索も可能です。
         一つの場合はデフォルト座標付近での検索となります。
         """
         _param = {
