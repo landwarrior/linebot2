@@ -191,7 +191,7 @@ def create_bubble_push_messages(content: dict) -> list:
                 }
             }
         })
-        if len(bubbles) >= 10:
+        if len(bubbles) >= 12:
             messages_response.append({
                 "type": "flex",
                 "altText": "通知",
