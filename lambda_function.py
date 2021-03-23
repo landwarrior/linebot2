@@ -10,7 +10,7 @@ POST:
         "enabled": {"BOOL": false}
     }
 }
-PUT: (ただし、キーしかないのでPOSTと同じ感じになる)
+PUT: (初期に調べたときは以下のようにキーが必要だと思ったが、POSTと同じで出来たので不要かも)
 {
     "TableName": "users",
     "Key": {
