@@ -41,6 +41,13 @@ def create_response(text, messages=None):
     return response
 
 
+def get_text(item, tag_name):
+    for elem in item:
+        if tag_name in elem.tag.lower():
+            return elem.text
+    return ''
+
+
 class CronGroup:
 
     @staticmethod
@@ -87,16 +94,16 @@ class CronGroup:
         messages = []
         for child in root[0]:
             if 'item' in child.tag.lower():
-                if child[0].text.startswith('PR:'):
+                if get_text(child, 'title').startswith('PR:'):
                     continue
-                if child[0].text.startswith('PR： '):
+                if get_text(child, 'title').startswith('PR： '):
                     continue
-                pub_date = datetime.datetime.strptime(child[3].text[0:25], '%a, %d %b %Y %H:%M:%S')
+                pub_date = datetime.datetime.strptime(get_text(child, 'pubdate')[0:25], '%a, %d %b %Y %H:%M:%S')
                 if yesterday <= pub_date:
                     messages.append({
-                        'title': child[0].text,
-                        'uri': child[1].text,
-                        'description': child[2].text
+                        'title': get_text(child, 'title'),
+                        'uri': get_text(child, 'link'),
+                        'description': get_text(child, 'description')
                     })
         if len(messages) == 0:
             text += '\n直近のニュースはありませんでした'
@@ -123,12 +130,12 @@ class CronGroup:
         messages = []
         for child in root[0]:
             if 'item' in child.tag.lower():
-                pub_date = datetime.datetime.strptime(child[3].text[0:25], '%a, %d %b %Y %H:%M:%S')
+                pub_date = datetime.datetime.strptime(get_text(child, 'pubdate')[0:25], '%a, %d %b %Y %H:%M:%S')
                 if yesterday <= pub_date:
                     messages.append({
-                        'title': child[0].text,
-                        'uri': child[1].text,
-                        'description': child[2].text
+                        'title': get_text(child, 'title'),
+                        'uri': get_text(child, 'link'),
+                        'description': get_text(child, 'description')
                     })
         if len(messages) == 0:
             text += '\n直近のニュースはありませんでした'
@@ -155,12 +162,12 @@ class CronGroup:
         messages = []
         for child in root[0]:
             if 'item' in child.tag.lower():
-                pub_date = datetime.datetime.strptime(child[3].text[0:25], '%a, %d %b %Y %H:%M:%S')
+                pub_date = datetime.datetime.strptime(get_text(child, 'pubdate')[0:25], '%a, %d %b %Y %H:%M:%S')
                 if yesterday <= pub_date:
                     messages.append({
-                        'title': child[0].text,
-                        'uri': child[1].text,
-                        'description': child[2].text
+                        'title': get_text(child, 'title'),
+                        'uri': get_text(child, 'link'),
+                        'description': get_text(child, 'description')
                     })
         if len(messages) == 0:
             text += '\n直近のニュースはありませんでした'
@@ -187,12 +194,12 @@ class CronGroup:
         messages = []
         for child in root:
             if 'item' in child.tag.lower():
-                pub_date = datetime.datetime.strptime(child[1].text[0:19], '%Y-%m-%dT%H:%M:%S')
+                pub_date = datetime.datetime.strptime(get_text(child, 'date')[0:19], '%Y-%m-%dT%H:%M:%S')
                 if yesterday <= pub_date:
                     messages.append({
-                        'title': child[3].text,
-                        'uri': child[4].text,
-                        'description': re.sub(r"<[^>]*?>", '', child[5].text)
+                        'title': get_text(child, 'title'),
+                        'uri': get_text(child, 'link'),
+                        'description': re.sub(r"<[^>]*?>", '', get_text(child, 'description'))
                     })
         if len(messages) == 0:
             text += '\n直近のニュースはありませんでした'
@@ -283,8 +290,8 @@ class CronGroup:
         for child in root[0]:
             if 'item' in child.tag.lower():
                 bubble = {
-                    'title': child[0].text,
-                    'uri': child[1].text,
+                    'title': get_text(child, 'title'),
+                    'uri': get_text(child, 'link'),
                     'description': '説明はありません'
                 }
                 for mago in child:
@@ -307,12 +314,12 @@ class CronGroup:
         messages = []
         for child in root:
             if 'item' in child.tag.lower():
-                date_obj = datetime.datetime.strptime(child[1].text[0:10], '%Y-%m-%d')
+                date_obj = datetime.datetime.strptime(get_text(child, 'date')[0:10], '%Y-%m-%d')
                 if yesterday <= date_obj:
                     bubble = {
-                        'title': child[3].text,
-                        'uri': child[4].text,
-                        'description': re.sub(r"<[^>]*?>", '', child[5].text)
+                        'title': get_text(child, 'title'),
+                        'uri': get_text(child, 'link'),
+                        'description': re.sub(r"<[^>]*?>", '', get_text(child, 'description'))
                     }
                     messages.append(bubble)
         if len(messages) == 0:
