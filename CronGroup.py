@@ -130,6 +130,10 @@ class CronGroup:
         messages = []
         for child in root[0]:
             if 'item' in child.tag.lower():
+                if get_text(child, 'title').startswith('PR:'):
+                    continue
+                if get_text(child, 'title').startswith('PR： '):
+                    continue
                 pub_date = datetime.datetime.strptime(get_text(child, 'pubdate')[0:25], '%a, %d %b %Y %H:%M:%S')
                 if yesterday <= pub_date:
                     messages.append({
