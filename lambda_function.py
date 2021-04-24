@@ -392,7 +392,8 @@ async def runner():
     tech_crunch_jp = await CronGroup.techCrunchJapan()
     tech_republic_jp = await CronGroup.techRepublicJapan()
     weekly_report = await CronGroup.weeklyReport()
-    notice = await CronGroup.noticeAlert()
+    notice = await CronGroup.jpcertNotice()
+    alert = await CronGroup.jpcertAlert()
     push_target_users = {
         'ait': [],
         'ait_new_all': [],
@@ -460,6 +461,8 @@ async def runner():
         push_message(push_target_users['weekly_report'], weekly_report['text'])
     if notice:
         push_message(push_target_users['notice'], notice['text'])
+    if alert:
+        push_message(push_target_users['notice'], alert['text'])
 
 
 def lambda_handler(event, context):

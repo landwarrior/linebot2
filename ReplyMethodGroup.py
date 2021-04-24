@@ -1,9 +1,12 @@
 """応答メッセージをするメソッド群."""
+import logging
 import os
 import random
 import re
 
 import requests
+
+from decos import log
 
 ITEM = {
     'lunch': {
@@ -24,6 +27,8 @@ ITEM = {
     },
 }
 
+LOGGER = logging.getLogger(name="Lambda")
+
 
 class MethodGroup:
     """やりたい処理を定義."""
@@ -39,6 +44,7 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36'''
         }
 
     @classmethod
+    @log(LOGGER)
     def _help(cls):
         """メソッド一覧."""
         methods = [a for a in dir(cls) if '_' not in a]
@@ -116,6 +122,7 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36'''
             if check == len(value['must']):
                 return key
 
+    @log(LOGGER)
     def lunch(self, args: list) -> None:
         """ランチ営業店舗検索.
 
@@ -150,6 +157,7 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36'''
         message += '　　Powered by ホットペッパー Webサービス'
         return message
 
+    @log(LOGGER)
     def qiita(self, args: list) -> None:
         """Qiita新着記事取得.
 
@@ -164,6 +172,7 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36'''
         message = '\n'.join(msg)
         return message
 
+    @log(LOGGER)
     def nomitai(self, args: list) -> None:
         """居酒屋検索.
 
@@ -204,6 +213,7 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36'''
         message += '　　Powered by ホットペッパー Webサービス'
         return message
 
+    @log(LOGGER)
     def teiki(self, args: list) -> None:
         """定期実行.
 

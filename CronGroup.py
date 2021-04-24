@@ -22,6 +22,8 @@ import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
 import requests
 
+from decos import log
+
 LOGGER = logging.getLogger(name="Lambda")
 HEADER = {
     'User-agent': '''\
@@ -51,9 +53,9 @@ def get_text(item, tag_name):
 class CronGroup:
 
     @staticmethod
+    @log(LOGGER)
     async def ait() -> None:
         """アットマークITの本日の総合ランキングを返します."""
-        LOGGER.info('--START-- ait')
         url = 'https://www.atmarkit.co.jp/json/ait/rss_rankindex_all_day.json'
         LOGGER.debug(f"GET {url} header: {HEADER}")
         res = requests.get(url, headers=HEADER)
@@ -72,12 +74,11 @@ class CronGroup:
             if len(messages) >= 10:
                 break
         return create_response(text, messages)
-        LOGGER.info('--END-- ait')
 
     @staticmethod
+    @log(LOGGER)
     async def ait_new_all() -> None:
         """アットマークITの全フォーラムの新着記事."""
-        LOGGER.info('--START-- ait_new_all')
         yesterday = NOW - datetime.timedelta(days=1)
         # 12:00 に実行するので、前日の 11:59 以降をデータ取得対象にする
         yesterday = datetime.datetime(
@@ -108,12 +109,11 @@ class CronGroup:
         if len(messages) == 0:
             text += '\n直近のニュースはありませんでした'
         return create_response(text, messages)
-        LOGGER.info('--END-- ait_new_all')
 
     @staticmethod
+    @log(LOGGER)
     async def smart_jp() -> None:
         """スマートジャパンの新着記事."""
-        LOGGER.info('--START-- smart_jp')
         yesterday = NOW - datetime.timedelta(days=1)
         # 12:00 に実行するので、前日の 11:59 以降をデータ取得対象にする
         yesterday = datetime.datetime(
@@ -144,12 +144,11 @@ class CronGroup:
         if len(messages) == 0:
             text += '\n直近のニュースはありませんでした'
         return create_response(text, messages)
-        LOGGER.info('--END-- smart_jp')
 
     @staticmethod
+    @log(LOGGER)
     async def itmedia_news() -> None:
         """ITmedia NEWS 最新記事一覧."""
-        LOGGER.info('--START-- itmedia_news')
         yesterday = NOW - datetime.timedelta(days=1)
         # 12:00 に実行するので、前日の 11:59 以降をデータ取得対象にする
         yesterday = datetime.datetime(
@@ -176,12 +175,11 @@ class CronGroup:
         if len(messages) == 0:
             text += '\n直近のニュースはありませんでした'
         return create_response(text, messages)
-        LOGGER.info('--END-- itmedia_news')
 
     @staticmethod
+    @log(LOGGER)
     async def zdjapan() -> None:
         """ZDNet Japan 最新情報 総合."""
-        LOGGER.info('--START-- zdjapan')
         yesterday = NOW - datetime.timedelta(days=1)
         # 12:00 に実行するので、前日の 11:59 以降をデータ取得対象にする
         yesterday = datetime.datetime(
@@ -208,9 +206,9 @@ class CronGroup:
         if len(messages) == 0:
             text += '\n直近のニュースはありませんでした'
         return create_response(text, messages)
-        LOGGER.info('--END-- zdjapan')
 
     @staticmethod
+    @log(LOGGER)
     async def weeklyReport() -> None:
         """JPCERT から Weekly Report を取得.
 
@@ -230,8 +228,9 @@ class CronGroup:
             return create_response(message, None)
 
     @staticmethod
-    async def noticeAlert() -> None:
-        """当日発表の注意喚起もしくは脆弱性関連情報を取得.
+    @log(LOGGER)
+    async def jpcertNotice() -> None:
+        """当日発表の注意喚起を取得.
 
         何もなきゃ何も言いません。
         """
@@ -249,9 +248,7 @@ class CronGroup:
         jpcert = BeautifulSoup(ret.content.decode('utf-8'), 'html.parser')
         items = jpcert.select('div.container')
         notice = '【 JPCERT の直近の注意喚起 】\n'
-        warning = '【 JPCERT の直近の脆弱性関連情報 】\n'
         notice_list = []
-        warning_list = []
         for data in items:
             if data.select('h3') and data.select('h3')[0].text == '注意喚起':
                 for li in data.select('ul.list>li'):
@@ -265,6 +262,32 @@ class CronGroup:
                         link = url + li.select('a')[0].get('href')
                         notice_list.append(
                             f"{yesterday.strftime('%Y-%m-%d')} {title} {link}")
+        if len(notice_list) > 0:
+            notice += '\n'.join(notice_list)
+            return create_response(notice, None)
+
+    @staticmethod
+    @log(LOGGER)
+    async def jpcertAlert() -> None:
+        """当日発表の脆弱性関連情報を取得.
+
+        何もなきゃ何も言いません。
+        """
+        url = 'https://www.jpcert.or.jp'
+        yesterday = NOW - datetime.timedelta(days=1)
+        # 12:00 に実行するので、前日の 11:59 以降をデータ取得対象にする
+        yesterday = datetime.datetime(
+            yesterday.year,
+            yesterday.month,
+            yesterday.day,
+            11, 59, 59
+        )
+        ret = requests.get(url, headers=HEADER)
+        jpcert = BeautifulSoup(ret.content.decode('utf-8'), 'html.parser')
+        items = jpcert.select('div.container')
+        warning = '【 JPCERT の直近の脆弱性関連情報 】\n'
+        warning_list = []
+        for data in items:
             if data.select('h3') and data.select('h3')[0].text == '脆弱性関連情報':
                 for li in data.select('ul.list>li'):
                     published = li.select('a')[0].select(
@@ -275,14 +298,12 @@ class CronGroup:
                     if yesterday <= dt_published:
                         link = li.select('a')[0].get('href')
                         warning_list.append(f"{title} {link}")
-        if len(notice_list) > 0:
-            notice += '\n'.join(notice_list)
-            return create_response(notice, None)
         if len(warning_list) > 0:
             warning += '\n'.join(warning_list)
             return create_response(warning, None)
 
     @staticmethod
+    @log(LOGGER)
     async def techCrunchJapan() -> None:
         """Tech Crunch Japanのニュースを取得する.
 
@@ -309,7 +330,9 @@ class CronGroup:
         return create_response(text, messages)
 
     @staticmethod
+    @log(LOGGER)
     async def techRepublicJapan() -> None:
+        """TechRepublic Japanのニュースを取得する."""
         yesterday = datetime.date.today() - datetime.timedelta(days=1)
         yesterday = datetime.datetime.strptime(yesterday.strftime('%Y%m%d'), '%Y%m%d')
         res = requests.get('https://japan.techrepublic.com/rss/latest/')
