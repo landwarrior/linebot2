@@ -225,6 +225,9 @@ def bubble_push(user_list: list, messages: list) -> None:
         }, ...
     ]
     """
+    if not user_list:
+        # 送信先がなければ何もしない
+        return
     headers = {
         'Content-Type': 'application/json',
         "Authorization": f"Bearer {os.environ['access_token']}",
@@ -241,6 +244,9 @@ def bubble_push(user_list: list, messages: list) -> None:
 
 def push_message(user_list: list, message: str) -> None:
     """プッシュ通知."""
+    if not user_list:
+        # 送信先がなければ何もしない
+        return
     headers = {
         'Content-Type': 'application/json',
         "Authorization": f"Bearer {os.environ['access_token']}",
