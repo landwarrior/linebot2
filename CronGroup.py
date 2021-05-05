@@ -33,7 +33,7 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36'''
 NOW = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=9)
 
 
-def create_response(text, messages=None):
+def create_response(text: str, messages=None) -> dict:
     if messages is None:
         messages = []
     response = {
@@ -43,7 +43,11 @@ def create_response(text, messages=None):
     return response
 
 
-def get_text(item, tag_name):
+def get_text(item, tag_name: str) -> str:
+    """XMLのタグ名を基に文字列を取得.
+
+    タグ名は小文字に置き換えて検索します。
+    """
     for elem in item:
         if tag_name in elem.tag.lower():
             return elem.text
@@ -54,7 +58,7 @@ class CronGroup:
 
     @staticmethod
     @log(LOGGER)
-    async def ait() -> None:
+    async def ait() -> dict:
         """アットマークITの本日の総合ランキングを返します."""
         url = 'https://www.atmarkit.co.jp/json/ait/rss_rankindex_all_day.json'
         LOGGER.debug(f"GET {url} header: {HEADER}")
@@ -77,7 +81,7 @@ class CronGroup:
 
     @staticmethod
     @log(LOGGER)
-    async def ait_new_all() -> None:
+    async def ait_new_all() -> dict:
         """アットマークITの全フォーラムの新着記事."""
         yesterday = NOW - datetime.timedelta(days=1)
         # 12:00 に実行するので、前日の 11:59 以降をデータ取得対象にする
@@ -112,7 +116,7 @@ class CronGroup:
 
     @staticmethod
     @log(LOGGER)
-    async def smart_jp() -> None:
+    async def smart_jp() -> dict:
         """スマートジャパンの新着記事."""
         yesterday = NOW - datetime.timedelta(days=1)
         # 12:00 に実行するので、前日の 11:59 以降をデータ取得対象にする
@@ -147,7 +151,7 @@ class CronGroup:
 
     @staticmethod
     @log(LOGGER)
-    async def itmedia_news() -> None:
+    async def itmedia_news() -> dict:
         """ITmedia NEWS 最新記事一覧."""
         yesterday = NOW - datetime.timedelta(days=1)
         # 12:00 に実行するので、前日の 11:59 以降をデータ取得対象にする
@@ -178,7 +182,7 @@ class CronGroup:
 
     @staticmethod
     @log(LOGGER)
-    async def zdjapan() -> None:
+    async def zdjapan() -> dict:
         """ZDNet Japan 最新情報 総合."""
         yesterday = NOW - datetime.timedelta(days=1)
         # 12:00 に実行するので、前日の 11:59 以降をデータ取得対象にする
@@ -209,7 +213,7 @@ class CronGroup:
 
     @staticmethod
     @log(LOGGER)
-    async def weeklyReport() -> None:
+    async def weeklyReport() -> dict:
         """JPCERT から Weekly Report を取得.
 
         水曜日とかじゃないと何も返ってきません。
@@ -229,7 +233,7 @@ class CronGroup:
 
     @staticmethod
     @log(LOGGER)
-    async def jpcertNotice() -> None:
+    async def jpcertNotice() -> dict:
         """当日発表の注意喚起を取得.
 
         何もなきゃ何も言いません。
@@ -268,7 +272,7 @@ class CronGroup:
 
     @staticmethod
     @log(LOGGER)
-    async def jpcertAlert() -> None:
+    async def jpcertAlert() -> dict:
         """当日発表の脆弱性関連情報を取得.
 
         何もなきゃ何も言いません。
@@ -304,7 +308,7 @@ class CronGroup:
 
     @staticmethod
     @log(LOGGER)
-    async def techCrunchJapan() -> None:
+    async def techCrunchJapan() -> dict:
         """Tech Crunch Japanのニュースを取得する.
 
         RSSフィードの情報を取得するので、ちゃんと出来るか不安"""
@@ -331,7 +335,7 @@ class CronGroup:
 
     @staticmethod
     @log(LOGGER)
-    async def techRepublicJapan() -> None:
+    async def techRepublicJapan() -> dict:
         """TechRepublic Japanのニュースを取得する."""
         yesterday = datetime.date.today() - datetime.timedelta(days=1)
         yesterday = datetime.datetime.strptime(yesterday.strftime('%Y%m%d'), '%Y%m%d')
@@ -347,6 +351,36 @@ class CronGroup:
                         'title': get_text(child, 'title'),
                         'uri': get_text(child, 'link'),
                         'description': re.sub(r"<[^>]*?>", '', get_text(child, 'description'))
+                    }
+                    messages.append(bubble)
+        if len(messages) == 0:
+            text += '\n直近のニュースはありませんでした'
+        return create_response(text, messages)
+
+    @staticmethod
+    @log(LOGGER)
+    async def uxmilk() -> dict:
+        """UX MILKのニュースを取得する."""
+        yesterday = NOW - datetime.timedelta(days=1)
+        # 12:00 に実行するので、前日の 11:59 以降をデータ取得対象にする
+        yesterday = datetime.datetime(
+            yesterday.year,
+            yesterday.month,
+            yesterday.day,
+            11, 59, 59
+        )
+        res = requests.get('https://uxmilk.jp/feed')
+        root = ET.fromstring(res.content.decode('utf8'))
+        text = "UX MILK の最新ニュース"
+        messages = []
+        for child in root[0]:
+            if 'item' in child.tag.lower():
+                pub_date = datetime.datetime.strptime(get_text(child, 'pubdate')[0:25], '%a, %d %b %Y %H:%M:%S')
+                if yesterday <= pub_date:
+                    bubble = {
+                        'title': get_text(child, 'title'),
+                        'uri': get_text(child, 'link'),
+                        'description': get_text(child, 'description') + '…'
                     }
                     messages.append(bubble)
         if len(messages) == 0:

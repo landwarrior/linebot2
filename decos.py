@@ -9,6 +9,8 @@ def log(logger):
             logger.info(f"-- END -- {func.__name__}")
             return res
 
+        wrapper.__doc__ = func.__doc__
+
         return wrapper
 
     return log_wrapper

@@ -223,22 +223,34 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36'''
         check = '定期実行の確認'
         for item in self.dynamo.scan(**{"TableName": "users"})['Items']:
             if item['user_id']['S'] == self.user_id:
-                bool_str = '有効' if item.get('enabled', {}).get('BOOL', False) else '無効'
+                bool_str = '有効' if item.get(
+                    'enabled', {}).get('BOOL', False) else '無効'
                 check += f"\n定期実行： {bool_str}"
-                bool_str = '有効' if item.get('ait_enabled', {}).get('BOOL', False) else '無効'
+                bool_str = '有効' if item.get(
+                    'ait_enabled', {}).get('BOOL', False) else '無効'
                 check += f"\n(1)アットマークITランキング： {bool_str}"
-                bool_str = '有効' if item.get('ait_new_all_enabled', {}).get('BOOL', False) else '無効'
+                bool_str = '有効' if item.get(
+                    'ait_new_all_enabled', {}).get('BOOL', False) else '無効'
                 check += f"\n(2)アットマークITの全フォーラムの新着記事： {bool_str}"
-                bool_str = '有効' if item.get('smart_jp_enabled', {}).get('BOOL', False) else '無効'
+                bool_str = '有効' if item.get(
+                    'smart_jp_enabled', {}).get('BOOL', False) else '無効'
                 check += f"\n(3)スマートジャパンの新着記事： {bool_str}"
-                bool_str = '有効' if item.get('itmedia_news_enabled', {}).get('BOOL', False) else '無効'
+                bool_str = '有効' if item.get(
+                    'itmedia_news_enabled', {}).get('BOOL', False) else '無効'
                 check += f"\n(4)ITmedia NEWS 最新記事一覧： {bool_str}"
-                bool_str = '有効' if item.get('zdjapan_enabled', {}).get('BOOL', False) else '無効'
+                bool_str = '有効' if item.get(
+                    'zdjapan_enabled', {}).get('BOOL', False) else '無効'
                 check += f"\n(5)ZDNet Japan 最新情報 総合： {bool_str}"
-                bool_str = '有効' if item.get('tech_crunch_jp_enabled', {}).get('BOOL', False) else '無効'
+                bool_str = '有効' if item.get(
+                    'tech_crunch_jp_enabled', {}).get('BOOL', False) else '無効'
                 check += f"\n(6)Tech Crunch Japan の最新ニュース： {bool_str}"
-                bool_str = '有効' if item.get('tech_republic_jp_enabled', {}).get('BOOL', False) else '無効'
+                bool_str = '有効' if item.get(
+                    'tech_republic_jp_enabled', {}).get(
+                        'BOOL', False) else '無効'
                 check += f"\n(7)TechRepublic Japan の最新ニュース： {bool_str}"
+                bool_str = '有効' if item.get(
+                    'uxmilk', {}).get('BOOL', False) else '無効'
+                check += f"\n(8)UX MILK の最新ニュース： {bool_str}"
         check += '\n定期実行を有効にするには、「定期有効」と入力してください'
         check += '\n定期実行を無効にするには、「定期無効」と入力してください'
         check += '\nそれぞれの実行を切り替えるには、「番号(有効|無効)」と入力してください'

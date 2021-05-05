@@ -376,6 +376,14 @@ def toggle_tech_republic_jp(enabled: bool) -> None:
     update_user(USER_ID, params)
 
 
+def toggle_uxmilk(enabled: bool) -> None:
+    """UX MILKの新着の定期実行有効化、もしくは無効化."""
+    params = {
+        'uxmilk': {'BOOL': enabled}
+    }
+    update_user(USER_ID, params)
+
+
 async def runner():
     user_list = []
     for item in dynamo.scan(**{'TableName': 'users'})['Items']:
@@ -389,6 +397,7 @@ async def runner():
                 'zdjapan_enabled': item.get('zdjapan_enabled', {}).get('BOOL', False),
                 'tech_crunch_jp_enabled': item.get('tech_crunch_jp_enabled', {}).get('BOOL', False),
                 'tech_republic_jp_enabled': item.get('tech_republic_jp_enabled', {}).get('BOOL', False),
+                'uxmilk': item.get('uxmilk', {}).get('BOOL', False),
             })
     ait = await CronGroup.ait()
     ait_new_all = await CronGroup.ait_new_all()
@@ -400,6 +409,7 @@ async def runner():
     weekly_report = await CronGroup.weeklyReport()
     notice = await CronGroup.jpcertNotice()
     alert = await CronGroup.jpcertAlert()
+    uxmilk = await CronGroup.uxmilk()
     push_target_users = {
         'ait': [],
         'ait_new_all': [],
@@ -410,6 +420,7 @@ async def runner():
         'tech_republic_jp': [],
         'weekly_report': [],
         'notice': [],
+        'uxmilk': [],
     }
     for user in user_list:
         if user['ait_enabled']:
@@ -426,6 +437,8 @@ async def runner():
             push_target_users['tech_crunch_jp'].append(user['user_id'])
         if user['tech_republic_jp_enabled']:
             push_target_users['tech_republic_jp'].append(user['user_id'])
+        if user['uxmilk']:
+            push_target_users['uxmilk'].append(user['user_id'])
         push_target_users['weekly_report'].append(user['user_id'])
         push_target_users['notice'].append(user['user_id'])
     if ait:
@@ -463,6 +476,11 @@ async def runner():
         push_message(push_target_users['tech_republic_jp'], tech_republic_jp['text'])
         if len(messages) > 0:
             bubble_push(push_target_users['tech_republic_jp'], messages)
+    if uxmilk:
+        messages = create_bubble_push_messages(uxmilk)
+        push_message(push_target_users['uxmilk'], uxmilk['text'])
+        if len(messages) > 0:
+            bubble_push(push_target_users['uxmilk'], messages)
     if weekly_report:
         push_message(push_target_users['weekly_report'], weekly_report['text'])
     if notice:
@@ -580,6 +598,12 @@ def lambda_handler(event, context):
     elif len(args) > 0 and args[0] == '7無効':
         toggle_tech_republic_jp(False)
         reply_message('TechRepublic Japan の最新ニュースを無効にしました')
+    elif len(args) > 0 and args[0] == '8有効':
+        toggle_uxmilk(True)
+        reply_message('UX MILK の最新ニュースを有効にしました')
+    elif len(args) > 0 and args[0] == '8無効':
+        toggle_uxmilk(False)
+        reply_message('UX MILK の最新ニュースを無効にしました')
     else:
         func = methodGroup._method_search(args[0])
         if func:
