@@ -171,11 +171,15 @@ class CronGroup:
             if 'item' in child.tag.lower():
                 pub_date = datetime.datetime.strptime(get_text(child, 'pubdate')[0:25], '%a, %d %b %Y %H:%M:%S')
                 if yesterday <= pub_date:
-                    messages.append({
+                    data_dict = {
                         'title': get_text(child, 'title'),
                         'uri': get_text(child, 'link'),
-                        'description': get_text(child, 'description')
-                    })
+                        'description': '説明なし',
+                    }
+                    if get_text(child, 'description'):
+                        data_dict['description'] = get_text(child, 'description')
+                    messages.append(data_dict)
+
         if len(messages) == 0:
             text += '\n直近のニュースはありませんでした'
         return create_response(text, messages)
