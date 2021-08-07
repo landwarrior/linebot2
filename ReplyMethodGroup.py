@@ -242,15 +242,12 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36'''
                     'zdjapan_enabled', {}).get('BOOL', False) else '無効'
                 check += f"\n(5)ZDNet Japan 最新情報 総合： {bool_str}"
                 bool_str = '有効' if item.get(
-                    'tech_crunch_jp_enabled', {}).get('BOOL', False) else '無効'
-                check += f"\n(6)Tech Crunch Japan の最新ニュース： {bool_str}"
-                bool_str = '有効' if item.get(
                     'tech_republic_jp_enabled', {}).get(
                         'BOOL', False) else '無効'
-                check += f"\n(7)TechRepublic Japan の最新ニュース： {bool_str}"
+                check += f"\n(6)TechRepublic Japan の最新ニュース： {bool_str}"
                 bool_str = '有効' if item.get(
                     'uxmilk', {}).get('BOOL', False) else '無効'
-                check += f"\n(8)UX MILK の最新ニュース： {bool_str}"
+                check += f"\n(7)UX MILK の最新ニュース： {bool_str}"
         check += '\n定期実行を有効にするには、「定期有効」と入力してください'
         check += '\n定期実行を無効にするには、「定期無効」と入力してください'
         check += '\nそれぞれの実行を切り替えるには、「番号(有効|無効)」と入力してください'
