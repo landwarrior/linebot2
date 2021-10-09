@@ -370,14 +370,6 @@ def toggle_zdjapan(enabled: bool) -> None:
     update_user(USER_ID, params)
 
 
-def toggle_tech_republic_jp(enabled: bool) -> None:
-    """TechRepublic Japanの新着の定期実行有効化、もしくは無効化."""
-    params = {
-        'tech_republic_jp_enabled': {'BOOL': enabled}
-    }
-    update_user(USER_ID, params)
-
-
 def toggle_uxmilk(enabled: bool) -> None:
     """UX MILKの新着の定期実行有効化、もしくは無効化."""
     params = {
@@ -405,7 +397,6 @@ async def runner():
     smart_jp = await CronGroup.smart_jp()
     itmedia_news = await CronGroup.itmedia_news()
     zdjapan = await CronGroup.zdjapan()
-    tech_republic_jp = await CronGroup.techRepublicJapan()
     weekly_report = await CronGroup.weeklyReport()
     notice = await CronGroup.jpcertNotice()
     alert = await CronGroup.jpcertAlert()
@@ -463,12 +454,6 @@ async def runner():
         push_message(push_target_users['zdjapan'], zdjapan['text'])
         if len(messages) > 0:
             bubble_push(push_target_users['zdjapan'], messages)
-    if tech_republic_jp:
-        messages = create_bubble_push_messages(tech_republic_jp)
-        push_message(
-            push_target_users['tech_republic_jp'], tech_republic_jp['text'])
-        if len(messages) > 0:
-            bubble_push(push_target_users['tech_republic_jp'], messages)
     if uxmilk:
         messages = create_bubble_push_messages(uxmilk)
         push_message(push_target_users['uxmilk'], uxmilk['text'])
@@ -580,15 +565,9 @@ def lambda_handler(event, context):
         toggle_zdjapan(False)
         reply_message('ZDNet Japan 最新情報 総合を無効にしました')
     elif len(args) > 0 and args[0] == '6有効':
-        toggle_tech_republic_jp(True)
-        reply_message('TechRepublic Japan の最新ニュースを有効にしました')
-    elif len(args) > 0 and args[0] == '6無効':
-        toggle_tech_republic_jp(False)
-        reply_message('TechRepublic Japan の最新ニュースを無効にしました')
-    elif len(args) > 0 and args[0] == '7有効':
         toggle_uxmilk(True)
         reply_message('UX MILK の最新ニュースを有効にしました')
-    elif len(args) > 0 and args[0] == '7無効':
+    elif len(args) > 0 and args[0] == '6無効':
         toggle_uxmilk(False)
         reply_message('UX MILK の最新ニュースを無効にしました')
     else:

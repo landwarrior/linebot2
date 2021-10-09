@@ -31,7 +31,8 @@ HEADER = {
 Mozilla/5.0 (Windows NT 10.0; Win64; x64) \
 AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36'''
 }
-NOW = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=9)
+NOW = datetime.datetime.now(datetime.timezone.utc) + \
+                            datetime.timedelta(hours=9)
 # 1日と3分前を前日とする
 YESTERDAY = NOW - datetime.timedelta(days=1) - datetime.timedelta(minutes=3)
 YESTERDAY = datetime.datetime(
@@ -113,7 +114,8 @@ class CronGroup:
                         continue
                     if get_text(child, 'title').startswith('PR： '):
                         continue
-                    pub_date = datetime.datetime.strptime(get_text(child, 'pubdate')[0:25], '%a, %d %b %Y %H:%M:%S')
+                    pub_date = datetime.datetime.strptime(
+                        get_text(child, 'pubdate')[0:25], '%a, %d %b %Y %H:%M:%S')
                     if YESTERDAY <= pub_date:
                         messages.append({
                             'title': get_text(child, 'title'),
@@ -144,7 +146,8 @@ class CronGroup:
                         continue
                     if get_text(child, 'title').startswith('PR： '):
                         continue
-                    pub_date = datetime.datetime.strptime(get_text(child, 'pubdate')[0:25], '%a, %d %b %Y %H:%M:%S')
+                    pub_date = datetime.datetime.strptime(
+                        get_text(child, 'pubdate')[0:25], '%a, %d %b %Y %H:%M:%S')
                     if YESTERDAY <= pub_date:
                         messages.append({
                             'title': get_text(child, 'title'),
@@ -171,7 +174,8 @@ class CronGroup:
             root = ET.fromstring(res.content.decode('utf8'))
             for child in root[0]:
                 if 'item' in child.tag.lower():
-                    pub_date = datetime.datetime.strptime(get_text(child, 'pubdate')[0:25], '%a, %d %b %Y %H:%M:%S')
+                    pub_date = datetime.datetime.strptime(
+                        get_text(child, 'pubdate')[0:25], '%a, %d %b %Y %H:%M:%S')
                     if YESTERDAY <= pub_date:
                         data_dict = {
                             'title': get_text(child, 'title'),
@@ -179,7 +183,8 @@ class CronGroup:
                             'description': '説明なし',
                         }
                         if get_text(child, 'description'):
-                            data_dict['description'] = get_text(child, 'description')
+                            data_dict['description'] = get_text(
+                                child, 'description')
                         messages.append(data_dict)
 
             if len(messages) == 0:
@@ -202,7 +207,8 @@ class CronGroup:
             root = ET.fromstring(res.content.decode('utf8'))
             for child in root:
                 if 'item' in child.tag.lower():
-                    pub_date = datetime.datetime.strptime(get_text(child, 'date')[0:19], '%Y-%m-%dT%H:%M:%S')
+                    pub_date = datetime.datetime.strptime(
+                        get_text(child, 'date')[0:19], '%Y-%m-%dT%H:%M:%S')
                     if YESTERDAY <= pub_date:
                         messages.append({
                             'title': get_text(child, 'title'),
@@ -260,7 +266,8 @@ class CronGroup:
                     for li in data.select('ul.list>li'):
                         published = li.select('a')[0].select(
                             'span.left_area')[0].text
-                        title = li.select('a')[0].select('span.right_area')[0].text
+                        title = li.select('a')[0].select(
+                            'span.right_area')[0].text
                         if today in published:
                             link = url + li.select('a')[0].get('href')
                             notice_list.append(f"{today} {title} {link}")
@@ -296,7 +303,8 @@ class CronGroup:
                             'span.left_area')[0].text.strip()
                         dt_published = datetime.datetime.strptime(
                             published, '%Y-%m-%d %H:%M')
-                        title = li.select('a')[0].select('span.right_area')[0].text
+                        title = li.select('a')[0].select(
+                            'span.right_area')[0].text
                         if YESTERDAY <= dt_published:
                             link = li.select('a')[0].get('href')
                             warning_list.append(f"{title} {link}")
@@ -327,36 +335,11 @@ class CronGroup:
                     }
                     for mago in child:
                         if 'encoded' in mago.tag.lower():
-                            step1 = re.sub(r'^\<\!\[CDATA.*1024px" />', '', mago.text)
+                            step1 = re.sub(
+                                r'^\<\!\[CDATA.*1024px" />', '', mago.text)
                             step2 = re.sub(r"<[^>]*?>", '', step1)
                             bubble['description'] = step2[0:100] + '…'
                     messages.append(bubble)
-            if len(messages) == 0:
-                text += '\n直近のニュースはありませんでした'
-        except Exception:
-            LOGGER.error(f"{traceback.format_exc()}")
-            text += '\nエラーにより取得できませんでした'
-        return create_response(text, messages)
-
-    @staticmethod
-    @log(LOGGER)
-    async def techRepublicJapan() -> dict:
-        """TechRepublic Japanのニュースを取得する."""
-        text = "TechRepublic Japan の最新ニュース"
-        messages = []
-        try:
-            res = requests.get('https://japan.techrepublic.com/rss/latest/')
-            root = ET.fromstring(res.content.decode('utf8'))
-            for child in root:
-                if 'item' in child.tag.lower():
-                    date_obj = datetime.datetime.strptime(get_text(child, 'date')[0:10], '%Y-%m-%d')
-                    if YESTERDAY <= date_obj:
-                        bubble = {
-                            'title': get_text(child, 'title'),
-                            'uri': get_text(child, 'link'),
-                            'description': re.sub(r"<[^>]*?>", '', get_text(child, 'description'))
-                        }
-                        messages.append(bubble)
             if len(messages) == 0:
                 text += '\n直近のニュースはありませんでした'
         except Exception:
@@ -375,7 +358,8 @@ class CronGroup:
             root = ET.fromstring(res.content.decode('utf8'))
             for child in root[0]:
                 if 'item' in child.tag.lower():
-                    pub_date = datetime.datetime.strptime(get_text(child, 'pubdate')[0:25], '%a, %d %b %Y %H:%M:%S')
+                    pub_date = datetime.datetime.strptime(
+                        get_text(child, 'pubdate')[0:25], '%a, %d %b %Y %H:%M:%S')
                     if YESTERDAY <= pub_date:
                         bubble = {
                             'title': get_text(child, 'title'),
