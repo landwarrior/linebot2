@@ -141,7 +141,7 @@ def create_bubble_push_messages(content: dict) -> list:
     for message in content.get('messages'):
         bubbles.append({
             "type": "bubble",
-            # "size": "kilo",
+            "size": "kilo",
             "header": {
                 "type": "box",
                 "layout": "vertical",
@@ -157,7 +157,7 @@ def create_bubble_push_messages(content: dict) -> list:
                     }
                 ],
                 "backgroundColor": "#9bcfd1",
-                "paddingAll": "5px",
+                "paddingAll": "4px",
                 "action": {
                     "type": "uri",
                     "label": message.get('title', '')[0:20],
@@ -176,7 +176,7 @@ def create_bubble_push_messages(content: dict) -> list:
                               "type": "text",
                               "text": message.get('description'),
                               "color": "#8C8C8C",
-                              "size": "sm",
+                              "size": "xs",
                               "wrap": True
                           }
                         ],
@@ -188,8 +188,8 @@ def create_bubble_push_messages(content: dict) -> list:
                         "flex": 1
                     }
                 ],
-                "spacing": "md",
-                "paddingAll": "12px",
+                "spacing": "xs",
+                "paddingAll": "4px",
             },
             "styles": {
                 "footer": {

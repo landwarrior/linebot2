@@ -58,7 +58,7 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36'''
             label = ITEM.get(_method, {}).get('name')
             bubbles.append({
                 "type": "bubble",
-                "size": "kilo",
+                "size": "micro",
                 "header": {
                     "type": "box",
                     "layout": "vertical",
@@ -73,7 +73,7 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36'''
                         }
                     ],
                     "backgroundColor": "#9bcfd1",
-                    "paddingAll": "15px",
+                    "paddingAll": "4px",
                     "action": {
                         "type": "postback",
                         "label": label,
@@ -93,15 +93,15 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36'''
                                   "type": "text",
                                   "text": description,
                                   "color": "#8C8C8C",
-                                  "size": "sm",
+                                  "size": "xs",
                                   "wrap": True
                               }
                             ],
                             "flex": 1
                         }
                     ],
-                    "spacing": "md",
-                    "paddingAll": "12px",
+                    "spacing": "xs",
+                    "paddingAll": "4px",
                 },
                 "styles": {
                     "footer": {
