@@ -16,23 +16,21 @@
 import datetime
 import json
 import logging
-import re
 import traceback
 import xml.etree.ElementTree as ET
 
-from bs4 import BeautifulSoup
 import requests
-
+from bs4 import BeautifulSoup
 from decos import log
+from message import create_content, create_header, create_message
 
 LOGGER = logging.getLogger(name="Lambda")
 HEADER = {
-    'User-agent': '''\
+    "User-agent": """\
 Mozilla/5.0 (Windows NT 10.0; Win64; x64) \
-AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36'''
+AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36"""
 }
-NOW = datetime.datetime.now(datetime.timezone.utc) + \
-                            datetime.timedelta(hours=9)
+NOW = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=9)
 # 1日と3分前を前日とする
 YESTERDAY = NOW - datetime.timedelta(days=1) - datetime.timedelta(minutes=3)
 YESTERDAY = datetime.datetime(
@@ -48,10 +46,7 @@ YESTERDAY = datetime.datetime(
 def create_response(text: str, messages=None) -> dict:
     if messages is None:
         messages = []
-    response = {
-        'text': text,
-        'messages': messages
-    }
+    response = {"text": text, "messages": messages}
     return response
 
 
@@ -63,164 +58,169 @@ def get_text(item, tag_name: str) -> str:
     for elem in item:
         if tag_name in elem.tag.lower():
             return elem.text
-    return ''
+    return ""
 
 
 class CronGroup:
-
     @staticmethod
     @log(LOGGER)
     async def ait() -> dict:
         """アットマークITの本日の総合ランキングを返します."""
-        url = 'https://www.atmarkit.co.jp/json/ait/rss_rankindex_all_day.json'
+        url = "https://www.atmarkit.co.jp/json/ait/rss_rankindex_all_day.json"
         LOGGER.debug(f"GET {url} header: {HEADER}")
-        text = '【 アットマークITの本日の総合ランキング10件 】'
-        messages = []
+        header = create_header("アットマークITの本日の総合ランキング10件", None)
+        contents = []
         try:
             res = requests.get(url, headers=HEADER)
-            json_str = res.content.decode('sjis').replace(
-                'rankingindex(', '').replace(')', '').replace('\'', '"')
+            json_str = (
+                res.content.decode("sjis")
+                .replace("rankingindex(", "")
+                .replace(")", "")
+                .replace("'", '"')
+            )
             json_data = json.loads(json_str)
-            for item in json_data['data']:
+            for item in json_data["data"]:
                 if item:
-                    messages.append({
-                        'title': item['title'].replace(' ', ''),
-                        'uri': item['link'],
-                        'description': item['title'].replace(' ', ''),
-                    })
-                if len(messages) >= 10:
-                    break
-            if len(messages) == 0:
-                text += '\nありませんでした'
+                    content = create_content(
+                        item["title"].replace(" ", ""), item["link"]
+                    )
+                    contents.append(content)
+            if len(contents) == 0:
+                content = create_content("ありませんでした", None)
+                contents.append(content)
         except Exception:
             LOGGER.error(f"{traceback.format_exc()}")
-            text += '\nエラーにより取得できませんでした'
-        return create_response(text, messages)
+            content = create_content("エラーにより取得できませんでした", None)
+            contents.append(content)
+        return create_message(header, contents, None)
 
     @staticmethod
     @log(LOGGER)
     async def ait_new_all() -> dict:
         """アットマークITの全フォーラムの新着記事."""
-        url = 'https://rss.itmedia.co.jp/rss/2.0/ait.xml'
+        url = "https://rss.itmedia.co.jp/rss/2.0/ait.xml"
         LOGGER.debug(f"GET {url} header: {HEADER}")
-        text = 'アットマークITの全フォーラムの新着記事'
-        messages = []
+        header = create_header("アットマークITの全フォーラムの新着記事", None)
+        contents = []
         try:
             res = requests.get(url, headers=HEADER)
-            root = ET.fromstring(res.content.decode('utf8'))
+            root = ET.fromstring(res.content.decode("utf8"))
             for child in root[0]:
-                if 'item' in child.tag.lower():
-                    if get_text(child, 'title').startswith('PR:'):
+                if "item" in child.tag.lower():
+                    if get_text(child, "title").startswith("PR:"):
                         continue
-                    if get_text(child, 'title').startswith('PR： '):
+                    if get_text(child, "title").startswith("PR： "):
                         continue
                     pub_date = datetime.datetime.strptime(
-                        get_text(child, 'pubdate')[0:25], '%a, %d %b %Y %H:%M:%S')
+                        get_text(child, "pubdate")[0:25], "%a, %d %b %Y %H:%M:%S"
+                    )
                     if YESTERDAY <= pub_date:
-                        messages.append({
-                            'title': get_text(child, 'title'),
-                            'uri': get_text(child, 'link'),
-                            'description': get_text(child, 'description')
-                        })
-            if len(messages) == 0:
-                text += '\n直近のニュースはありませんでした'
+                        content = create_content(
+                            get_text(child, "title"), get_text(child, "link")
+                        )
+                        contents.append(content)
+            if len(contents) == 0:
+                content = create_content("直近のニュースはありませんでした", None)
+                contents.append(content)
         except Exception:
             LOGGER.error(f"{traceback.format_exc()}")
-            text = '\nエラーにより取得できませんでした'
-        return create_response(text, messages)
+            content = create_content("エラーにより取得できませんでした", None)
+            contents.append(content)
+        return create_message(header, contents, None)
 
     @staticmethod
     @log(LOGGER)
     async def smart_jp() -> dict:
         """スマートジャパンの新着記事."""
-        url = 'https://rss.itmedia.co.jp/rss/2.0/smartjapan.xml'
+        url = "https://rss.itmedia.co.jp/rss/2.0/smartjapan.xml"
         LOGGER.debug(f"GET {url} header: {HEADER}")
-        text = 'スマートジャパンの新着記事'
-        messages = []
+        header = create_header("スマートジャパンの新着記事", None)
+        contents = []
         try:
             res = requests.get(url, headers=HEADER)
-            root = ET.fromstring(res.content.decode('utf8'))
+            root = ET.fromstring(res.content.decode("utf8"))
             for child in root[0]:
-                if 'item' in child.tag.lower():
-                    if get_text(child, 'title').startswith('PR:'):
+                if "item" in child.tag.lower():
+                    if get_text(child, "title").startswith("PR:"):
                         continue
-                    if get_text(child, 'title').startswith('PR： '):
+                    if get_text(child, "title").startswith("PR： "):
                         continue
                     pub_date = datetime.datetime.strptime(
-                        get_text(child, 'pubdate')[0:25], '%a, %d %b %Y %H:%M:%S')
+                        get_text(child, "pubdate")[0:25], "%a, %d %b %Y %H:%M:%S"
+                    )
                     if YESTERDAY <= pub_date:
-                        messages.append({
-                            'title': get_text(child, 'title'),
-                            'uri': get_text(child, 'link'),
-                            'description': get_text(child, 'description')
-                        })
-            if len(messages) == 0:
-                text += '\n直近のニュースはありませんでした'
+                        content = create_content(
+                            get_text(child, "title"), get_text(child, "link")
+                        )
+                        contents.append(content)
+            if len(contents) == 0:
+                content = create_content("直近のニュースはありませんでした", None)
+                contents.append(content)
         except Exception:
             LOGGER.error(f"{traceback.format_exc()}")
-            text += '\nエラーにより取得できませんでした'
-        return create_response(text, messages)
+            content = create_content("エラーにより取得できませんでした", None)
+            contents.append(content)
+        return create_message(header, contents, None)
 
     @staticmethod
     @log(LOGGER)
     async def itmedia_news() -> dict:
         """ITmedia NEWS 最新記事一覧."""
-        url = 'https://rss.itmedia.co.jp/rss/2.0/news_bursts.xml'
+        url = "https://rss.itmedia.co.jp/rss/2.0/news_bursts.xml"
         LOGGER.debug(f"GET {url} header: {HEADER}")
-        text = 'ITmedia NEWS 最新記事一覧'
-        messages = []
+        header = create_header("ITmedia NEWS 最新記事一覧", None)
+        contents = []
         try:
             res = requests.get(url, headers=HEADER)
-            root = ET.fromstring(res.content.decode('utf8'))
+            root = ET.fromstring(res.content.decode("utf8"))
             for child in root[0]:
-                if 'item' in child.tag.lower():
+                if "item" in child.tag.lower():
                     pub_date = datetime.datetime.strptime(
-                        get_text(child, 'pubdate')[0:25], '%a, %d %b %Y %H:%M:%S')
+                        get_text(child, "pubdate")[0:25], "%a, %d %b %Y %H:%M:%S"
+                    )
                     if YESTERDAY <= pub_date:
-                        data_dict = {
-                            'title': get_text(child, 'title'),
-                            'uri': get_text(child, 'link'),
-                            'description': '説明なし',
-                        }
-                        if get_text(child, 'description'):
-                            data_dict['description'] = get_text(
-                                child, 'description')
-                        messages.append(data_dict)
-
-            if len(messages) == 0:
-                text += '\n直近のニュースはありませんでした'
+                        content = create_content(
+                            get_text(child, "title"), get_text(child, "link")
+                        )
+                        contents.append(content)
+            if len(contents) == 0:
+                content = create_content("直近のニュースはありませんでした", None)
+                contents.append(content)
         except Exception:
             LOGGER.error(f"{traceback.format_exc()}")
-            text += '\nエラーにより取得できませんでした'
-        return create_response(text, messages)
+            content = create_content("エラーにより取得できませんでした", None)
+            contents.append(content)
+        return create_message(header, contents, None)
 
     @staticmethod
     @log(LOGGER)
     async def zdjapan() -> dict:
         """ZDNet Japan 最新情報 総合."""
-        url = 'http://feeds.japan.zdnet.com/rss/zdnet/all.rdf'
+        url = "http://feeds.japan.zdnet.com/rss/zdnet/all.rdf"
         LOGGER.debug(f"GET {url} header: {HEADER}")
-        text = 'ZDNet Japan 最新情報 総合'
-        messages = []
+        header = create_header("ZDNet Japan 最新情報 総合", None)
+        contents = []
         try:
             res = requests.get(url, headers=HEADER)
-            root = ET.fromstring(res.content.decode('utf8'))
+            root = ET.fromstring(res.content.decode("utf8"))
             for child in root:
-                if 'item' in child.tag.lower():
+                if "item" in child.tag.lower():
                     pub_date = datetime.datetime.strptime(
-                        get_text(child, 'date')[0:19], '%Y-%m-%dT%H:%M:%S')
+                        get_text(child, "date")[0:19], "%Y-%m-%dT%H:%M:%S"
+                    )
                     if YESTERDAY <= pub_date:
-                        messages.append({
-                            'title': get_text(child, 'title'),
-                            'uri': get_text(child, 'link'),
-                            'description': re.sub(r"<[^>]*?>", '', get_text(child, 'description'))
-                        })
-            if len(messages) == 0:
-                text += '\n直近のニュースはありませんでした'
+                        content = create_content(
+                            get_text(child, "title"), get_text(child, "link")
+                        )
+                        contents.append(content)
+            if len(contents) == 0:
+                content = create_content("直近のニュースはありませんでした", None)
+                contents.append(content)
         except Exception:
             LOGGER.error(f"{traceback.format_exc()}")
-            text += '\nエラーにより取得できませんでした'
-        return create_response(text, messages)
+            content = create_content("エラーにより取得できませんでした", None)
+            contents.append(content)
+        return create_message(header, contents, None)
 
     @staticmethod
     @log(LOGGER)
@@ -229,22 +229,33 @@ class CronGroup:
 
         水曜日とかじゃないと何も返ってきません。
         """
-        url = 'https://www.jpcert.or.jp'
-        today = NOW.strftime('%Y-%m-%d')
+        url = "https://www.jpcert.or.jp"
+        today = NOW.strftime("%Y-%m-%d")
         try:
             ret = requests.get(url, headers=HEADER)
-            jpcert = BeautifulSoup(ret.content.decode('utf-8'), 'html.parser')
-            whatsdate = jpcert.select('a.fl')[0].text.replace('号', '')
+            jpcert = BeautifulSoup(ret.content.decode("utf-8"), "html.parser")
+            whatsdate = jpcert.select("a.fl")[0].text.replace("号", "")
             if today == whatsdate:
-                message = f"【 JPCERT の Weekly Report {jpcert.select('a.fl')[0].text} 】\n"
-                message += url + jpcert.select('a.fl')[0].get('href') + '\n'
-                wkrp = jpcert.select('div.contents')[0].select('li')
+                header = create_header(
+                    f"JPCERT の Weekly Report {jpcert.select('a.fl')[0].text}",
+                    url + jpcert.select("a.fl")[0].get("href"),
+                )
+                contents = []
+                wkrp = jpcert.select("div.contents")[0].select("li")
                 for i, item in enumerate(wkrp, start=1):
-                    message += f"{i}. {item.text}\n"
-                return create_response(message, None)
+                    content = create_content(
+                        f"{i}. {item.text}",
+                        f"{url}{jpcert.select('a.fl')[0].get('href')}#{i}",
+                    )
+                    contents.append(content)
+                return create_message(header, contents, None)
         except Exception:
             LOGGER.error(f"{traceback.format_exc()}")
-            return create_response('JPCERTのWeekly Report取得時にエラーが発生しました', None)
+            header = create_header("JPCERT の Weekly Report", None)
+            content = create_content("JPCERTのWeekly Report取得時にエラーが発生しました", None)
+            contents = []
+            contents.append(content)
+            return create_message(header, contents, None)
 
     @staticmethod
     @log(LOGGER)
@@ -253,34 +264,38 @@ class CronGroup:
 
         何もなきゃ何も言いません。
         """
-        url = 'https://www.jpcert.or.jp'
-        today = NOW.strftime('%Y-%m-%d')
+        url = "https://www.jpcert.or.jp"
+        today = NOW.strftime("%Y-%m-%d")
         try:
             ret = requests.get(url, headers=HEADER)
-            jpcert = BeautifulSoup(ret.content.decode('utf-8'), 'html.parser')
-            items = jpcert.select('div.container')
-            notice = '【 JPCERT の直近の注意喚起 】\n'
-            notice_list = []
+            jpcert = BeautifulSoup(ret.content.decode("utf-8"), "html.parser")
+            items = jpcert.select("div.container")
+            header = create_header("JPCERT の直近の注意喚起", None)
+            contents = []
             for data in items:
-                if data.select('h3') and data.select('h3')[0].text == '注意喚起':
-                    for li in data.select('ul.list>li'):
-                        published = li.select('a')[0].select(
-                            'span.left_area')[0].text
-                        title = li.select('a')[0].select(
-                            'span.right_area')[0].text
+                if data.select("h3") and data.select("h3")[0].text == "注意喚起":
+                    for li in data.select("ul.list>li"):
+                        published = li.select("a")[0].select("span.left_area")[0].text
+                        title = li.select("a")[0].select("span.right_area")[0].text
                         if today in published:
-                            link = url + li.select('a')[0].get('href')
-                            notice_list.append(f"{today} {title} {link}")
-                        if YESTERDAY.strftime('%Y-%m-%d') in published:
-                            link = url + li.select('a')[0].get('href')
-                            notice_list.append(
-                                f"{YESTERDAY.strftime('%Y-%m-%d')} {title} {link}")
-            if len(notice_list) > 0:
-                notice += '\n'.join(notice_list)
-                return create_response(notice, None)
+                            link = url + li.select("a")[0].get("href")
+                            content = create_content(f"{today} {title}", link)
+                            contents.append(content)
+                        if YESTERDAY.strftime("%Y-%m-%d") in published:
+                            link = url + li.select("a")[0].get("href")
+                            content = create_content(
+                                f"{YESTERDAY.strftime('%Y-%m-%d')} {title}", link
+                            )
+                            contents.append(content)
+            if len(contents) > 0:
+                return create_message(header, contents, None)
         except Exception:
             LOGGER.error(f"{traceback.format_exc()}")
-            return create_response('JPCERTの注意喚起取得時にエラーが発生しました', None)
+            header = create_header("JPCERT の直近の注意喚起", None)
+            content = create_content("JPCERTの注意喚起取得時にエラーが発生しました", None)
+            contents = []
+            contents.append(content)
+            return create_message(header, contents, None)
 
     @staticmethod
     @log(LOGGER)
@@ -289,31 +304,36 @@ class CronGroup:
 
         何もなきゃ何も言いません。
         """
-        url = 'https://www.jpcert.or.jp'
+        url = "https://www.jpcert.or.jp"
         try:
             ret = requests.get(url, headers=HEADER)
-            jpcert = BeautifulSoup(ret.content.decode('utf-8'), 'html.parser')
-            items = jpcert.select('div.container')
-            warning = '【 JPCERT の直近の脆弱性関連情報 】\n'
-            warning_list = []
+            jpcert = BeautifulSoup(ret.content.decode("utf-8"), "html.parser")
+            items = jpcert.select("div.container")
+            header = create_header("JPCERT の直近の脆弱性関連情報", None)
+            contents = []
             for data in items:
-                if data.select('h3') and data.select('h3')[0].text == '脆弱性関連情報':
-                    for li in data.select('ul.list>li'):
-                        published = li.select('a')[0].select(
-                            'span.left_area')[0].text.strip()
+                if data.select("h3") and data.select("h3")[0].text == "脆弱性関連情報":
+                    for li in data.select("ul.list>li"):
+                        published = (
+                            li.select("a")[0].select("span.left_area")[0].text.strip()
+                        )
                         dt_published = datetime.datetime.strptime(
-                            published, '%Y-%m-%d %H:%M')
-                        title = li.select('a')[0].select(
-                            'span.right_area')[0].text
+                            published, "%Y-%m-%d %H:%M"
+                        )
+                        title = li.select("a")[0].select("span.right_area")[0].text
                         if YESTERDAY <= dt_published:
-                            link = li.select('a')[0].get('href')
-                            warning_list.append(f"{title} {link}")
-            if len(warning_list) > 0:
-                warning += '\n'.join(warning_list)
-                return create_response(warning, None)
+                            link = li.select("a")[0].get("href")
+                            content = create_content(title, link)
+                            contents.append(content)
+            if len(contents) > 0:
+                return create_message(header, contents, None)
         except Exception:
             LOGGER.error(f"{traceback.format_exc()}")
-            return create_response('JPCERTの脆弱性関連情報取得時にエラーが発生しました', None)
+            header = create_header("JPCERT の直近の注意喚起", None)
+            content = create_content("JPCERTの脆弱性関連情報取得時にエラーが発生しました", None)
+            contents = []
+            contents.append(content)
+            return create_message(header, contents, None)
 
     @staticmethod
     @log(LOGGER)
@@ -321,55 +341,50 @@ class CronGroup:
         """Tech Crunch Japanのニュースを取得する.
 
         RSSフィードの情報を取得するので、ちゃんと出来るか不安"""
-        text = "Tech Crunch Japan の最新ニュース"
-        messages = []
+        header = create_header("Tech Crunch Japan の最新ニュース", None)
+        contents = []
         try:
-            res = requests.get('https://jp.techcrunch.com/feed/')
-            root = ET.fromstring(res.content.decode('utf8'))
+            res = requests.get("https://jp.techcrunch.com/feed/")
+            root = ET.fromstring(res.content.decode("utf8"))
             for child in root[0]:
-                if 'item' in child.tag.lower():
-                    bubble = {
-                        'title': get_text(child, 'title'),
-                        'uri': get_text(child, 'link'),
-                        'description': '説明はありません'
-                    }
-                    for mago in child:
-                        if 'encoded' in mago.tag.lower():
-                            step1 = re.sub(
-                                r'^\<\!\[CDATA.*1024px" />', '', mago.text)
-                            step2 = re.sub(r"<[^>]*?>", '', step1)
-                            bubble['description'] = step2[0:100] + '…'
-                    messages.append(bubble)
-            if len(messages) == 0:
-                text += '\n直近のニュースはありませんでした'
+                if "item" in child.tag.lower():
+                    content = create_content(
+                        get_text(child, "title"), get_text(child, "link")
+                    )
+                    contents.append(content)
+            if len(contents) == 0:
+                content = create_content("直近のニュースはありませんでした", None)
+                contents.append(content)
         except Exception:
             LOGGER.error(f"{traceback.format_exc()}")
-            text += '\nエラーにより取得できませんでした'
-        return create_response(text, messages)
+            content = create_content("エラーにより取得できませんでした", None)
+            contents.append(content)
+        return create_message(header, contents, None)
 
     @staticmethod
     @log(LOGGER)
     async def uxmilk() -> dict:
         """UX MILKのニュースを取得する."""
-        text = "UX MILK の最新ニュース"
-        messages = []
+        header = create_header("UX MILK の最新ニュース", None)
+        contents = []
         try:
-            res = requests.get('https://uxmilk.jp/feed')
-            root = ET.fromstring(res.content.decode('utf8'))
+            res = requests.get("https://uxmilk.jp/feed")
+            root = ET.fromstring(res.content.decode("utf8"))
             for child in root[0]:
-                if 'item' in child.tag.lower():
+                if "item" in child.tag.lower():
                     pub_date = datetime.datetime.strptime(
-                        get_text(child, 'pubdate')[0:25], '%a, %d %b %Y %H:%M:%S')
+                        get_text(child, "pubdate")[0:25], "%a, %d %b %Y %H:%M:%S"
+                    )
                     if YESTERDAY <= pub_date:
-                        bubble = {
-                            'title': get_text(child, 'title'),
-                            'uri': get_text(child, 'link'),
-                            'description': get_text(child, 'description') + '…'
-                        }
-                        messages.append(bubble)
-            if len(messages) == 0:
-                text += '\n直近のニュースはありませんでした'
+                        content = create_content(
+                            get_text(child, "title"), get_text(child, "link")
+                        )
+                        contents.append(content)
+            if len(contents) == 0:
+                content = create_content("直近のニュースはありませんでした", None)
+                contents.append(content)
         except Exception:
             LOGGER.error(f"{traceback.format_exc()}")
-            text += '\nエラーにより取得できませんでした'
-        return create_response(text, messages)
+            content = create_content("エラーにより取得できませんでした", None)
+            contents.append(content)
+        return create_message(header, contents, None)
