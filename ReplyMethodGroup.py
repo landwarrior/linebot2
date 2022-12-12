@@ -48,67 +48,46 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36"""
     def _help(cls):
         """メソッド一覧."""
         methods = [a for a in dir(cls) if "_" not in a]
-        bubbles = []
+        header = create_header("メソッド一覧", None)
+        contents = []
         for _method in methods:
             description = re.sub(" {1,}", "", getattr(cls, _method).__doc__)
             args = re.split(r"\.\n", description)
             title = args[0]
             # 末尾の改行も含まれている
-            description = "\n".join(("".join(args[1:])).split("\n")[1:])
+            description = "\n".join(("".join(args[1:])).split("\n")[1:]).rstrip("\r\n")
             label = ITEM.get(_method, {}).get("name")
-            bubbles.append(
-                {
-                    "type": "bubble",
-                    "size": "micro",
-                    "header": {
-                        "type": "box",
-                        "layout": "vertical",
-                        "contents": [
-                            {
-                                "type": "text",
-                                "text": title,
-                                "color": "#2f3739",
-                                "align": "start",
-                                "size": "md",
-                                "gravity": "center",
-                            }
-                        ],
-                        "backgroundColor": "#9bcfd1",
-                        "paddingAll": "4px",
-                        "action": {
-                            "type": "postback",
-                            "label": label,
-                            "data": label,
-                            "displayText": label,
-                        },
+            content = {
+                "type": "box",
+                "layout": "vertical",
+                "paddingAll": "4px",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": title,
+                        "color": "#35393c",
+                        "wrap": True,
                     },
-                    "body": {
-                        "type": "box",
-                        "layout": "vertical",
-                        "contents": [
-                            {
-                                "type": "box",
-                                "layout": "horizontal",
-                                "contents": [
-                                    {
-                                        "type": "text",
-                                        "text": description,
-                                        "color": "#8C8C8C",
-                                        "size": "xs",
-                                        "wrap": True,
-                                    }
-                                ],
-                                "flex": 1,
-                            }
-                        ],
-                        "spacing": "xs",
-                        "paddingAll": "4px",
+                    {
+                        "type": "text",
+                        "text": description,
+                        "size": "xs",
+                        "color": "#8C8C8C",
+                        "wrap": True,
                     },
-                    "styles": {"footer": {"separator": False}},
-                }
-            )
+                ],
+                "action": {
+                    "type": "postback",
+                    "label": label,
+                    "data": label,
+                    "displayText": label,
+                },
+                "flex": 0,
+            }
+            contents.append(content)
+        message = create_message(header, contents, None)
 
-        return bubbles
+        return message
 
     def _method_search(self, text):
         """対象のメソッドがあればそのメソッド名を返す."""

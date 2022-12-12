@@ -552,7 +552,7 @@ def lambda_handler(event, context):
     args = text.split(" ")
     methodGroup = MethodGroup(dynamo, USER_ID)
     if len(args) > 0 and args[0] == "コマンド":
-        reply_bubble(methodGroup._help())
+        reply(methodGroup._help())
     elif len(args) > 0 and args[0] == "定期無効":
         toggle_teiki(False)
         reply_message("定期実行を無効にしました")
