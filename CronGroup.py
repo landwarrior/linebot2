@@ -80,6 +80,8 @@ class CronGroup:
             )
             json_data = json.loads(json_str)
             for item in json_data["data"]:
+                if len(contents) >= 10:
+                    break
                 if item:
                     content = create_content(
                         item["title"].replace(" ", ""), item["link"]
