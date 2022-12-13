@@ -54,8 +54,8 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36"""
             description = re.sub(" {1,}", "", getattr(cls, _method).__doc__)
             args = re.split(r"\.\n", description)
             title = args[0]
-            # 末尾の改行も含まれている
-            description = "\n".join(("".join(args[1:])).split("\n")[1:]).rstrip("\r\n")
+            # 末尾の改行も消している
+            description = "\n".join(("".join(args[1:])).split("\n")[1:]).rstrip()
             label = ITEM.get(_method, {}).get("name")
             content = {
                 "type": "box",
