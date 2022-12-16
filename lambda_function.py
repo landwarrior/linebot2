@@ -597,12 +597,7 @@ def lambda_handler(event, context):
         reply_message("UX MILK の最新ニュースを無効にしました")
     else:
         func = methodGroup._method_search(args[0])
-        if func and func == "teiki":
-            LOGGER.info(f"method: {func}, param: {args[1:]}")
-            message = getattr(methodGroup, func)(args[1:])
-            if message:
-                reply_message(message)
-        elif func:
+        if func:
             LOGGER.info(f"method: {func}, param: {args[1:]}")
             message = getattr(methodGroup, func)(args[1:])
             if message:

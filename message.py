@@ -35,6 +35,47 @@ def create_content(description: str, uri: str) -> dict:
     return content
 
 
+def create_content2(description: str, is_enable: bool, postback: str) -> dict:
+    """メッセージのcontentを作成する.
+
+    定期実行の確認用
+    """
+    content = {
+        "type": "box",
+        "layout": "horizontal",
+        "paddingAll": "4px",
+        "contents": [
+            {
+                "type": "text",
+                "text": description,
+                "color": "#35393c",
+                "wrap": True,
+                "flex": 9,
+            },
+            {
+                "type": "text",
+                "text": "ON" if is_enable else "OFF",
+                "color": "#43c461" if is_enable else "#ff3b3b",
+                "wrap": False,
+                "gravity": "center",
+                "flex": 1,
+            },
+        ],
+        "flex": 0,
+    }
+    if postback:
+        action = {
+            "action": {
+                "type": "postback",
+                "label": postback,
+                "data": postback,
+                "displayText": postback,
+            }
+        }
+        content.update(action)
+    return content
+
+
 def create_footer(text: str) -> dict:
     """メッセージのフッターを作成する."""
     footer = {

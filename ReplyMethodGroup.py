@@ -6,7 +6,13 @@ import re
 
 import requests
 from decos import log
-from message import create_content, create_footer, create_header, create_message
+from message import (
+    create_content,
+    create_content2,
+    create_footer,
+    create_header,
+    create_message,
+)
 
 ITEM = {
     "lunch": {
@@ -208,40 +214,66 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36"""
         有効にしたら、毎日正午にニュース等を取得します。
         有効かどうかをチェックするには、このメソッドを実行してください。
         """
-        check = "定期実行の確認"
+        # check = "定期実行の確認"
+        header = create_header("定期実行の確認", None)
+        contents = []
         for item in self.dynamo.scan(**{"TableName": "users"})["Items"]:
             if item["user_id"]["S"] == self.user_id:
-                bool_str = "有効" if item.get("enabled", {}).get("BOOL", False) else "無効"
-                check += f"\n定期実行： {bool_str}"
-                bool_str = (
-                    "有効" if item.get("ait_enabled", {}).get("BOOL", False) else "無効"
+                is_enable = (
+                    True if item.get("enabled", {}).get("BOOL", False) else False
                 )
-                check += f"\n(1)アットマークITランキング： {bool_str}"
-                bool_str = (
-                    "有効"
+                contents.append(create_content2("定期実行", is_enable, None))
+                # check += f"\n定期実行： {bool_str}"
+                is_enable = (
+                    True if item.get("ait_enabled", {}).get("BOOL", False) else False
+                )
+                contents.append(create_content2("(1)アットマークITランキング", is_enable, None))
+                # check += f"\n(1)アットマークITランキング： {bool_str}"
+                is_enable = (
+                    True
                     if item.get("ait_new_all_enabled", {}).get("BOOL", False)
-                    else "無効"
+                    else False
                 )
-                check += f"\n(2)アットマークITの全フォーラムの新着記事： {bool_str}"
-                bool_str = (
-                    "有効"
+                contents.append(
+                    create_content2("(2)アットマークITの全フォーラムの新着記事", is_enable, None)
+                )
+                # check += f"\n(2)アットマークITの全フォーラムの新着記事： {bool_str}"
+                is_enable = (
+                    True
                     if item.get("smart_jp_enabled", {}).get("BOOL", False)
-                    else "無効"
+                    else False
                 )
-                check += f"\n(3)スマートジャパンの新着記事： {bool_str}"
-                bool_str = (
-                    "有効"
+                contents.append(create_content2("(3)スマートジャパンの新着記事", is_enable, None))
+                # check += f"\n(3)スマートジャパンの新着記事： {bool_str}"
+                is_enable = (
+                    True
                     if item.get("itmedia_news_enabled", {}).get("BOOL", False)
-                    else "無効"
+                    else False
                 )
-                check += f"\n(4)ITmedia NEWS 最新記事一覧： {bool_str}"
-                bool_str = (
-                    "有効" if item.get("zdjapan_enabled", {}).get("BOOL", False) else "無効"
+                contents.append(
+                    create_content2("(4)ITmedia NEWS 最新記事一覧", is_enable, None)
                 )
-                check += f"\n(5)ZDNet Japan 最新情報 総合： {bool_str}"
-                bool_str = "有効" if item.get("uxmilk", {}).get("BOOL", False) else "無効"
-                check += f"\n(6)UX MILK の最新ニュース： {bool_str}"
-        check += "\n定期実行を有効にするには、「定期有効」と入力してください"
-        check += "\n定期実行を無効にするには、「定期無効」と入力してください"
-        check += "\nそれぞれの実行を切り替えるには、「番号(有効|無効)」と入力してください"
-        return check
+                # check += f"\n(4)ITmedia NEWS 最新記事一覧： {bool_str}"
+                is_enable = (
+                    True
+                    if item.get("zdjapan_enabled", {}).get("BOOL", False)
+                    else False
+                )
+                contents.append(
+                    create_content2("(5)ZDNet Japan 最新情報 総合", is_enable, None)
+                )
+                # check += f"\n(5)ZDNet Japan 最新情報 総合： {bool_str}"
+                is_enable = True if item.get("uxmilk", {}).get("BOOL", False) else False
+                contents.append(create_content2("(6)UX MILK の最新ニュース", is_enable, None))
+                # check += f"\n(6)UX MILK の最新ニュース： {bool_str}"
+        footer = create_footer(
+            """\
+定期実行を有効にするには、「定期有効」と入力してください
+定期実行を無効にするには、「定期無効」と入力してください
+それぞれの実行を切り替えるには、「番号(有効|無効)」と入力してください"""
+        )
+        # check += "\n定期実行を有効にするには、「定期有効」と入力してください"
+        # check += "\n定期実行を無効にするには、「定期無効」と入力してください"
+        # check += "\nそれぞれの実行を切り替えるには、「番号(有効|無効)」と入力してください"
+        return create_message(header, contents, footer)
+        # return check
