@@ -214,66 +214,74 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36"""
         有効にしたら、毎日正午にニュース等を取得します。
         有効かどうかをチェックするには、このメソッドを実行してください。
         """
-        # check = "定期実行の確認"
         header = create_header("定期実行の確認", None)
         contents = []
         for item in self.dynamo.scan(**{"TableName": "users"})["Items"]:
             if item["user_id"]["S"] == self.user_id:
+                # 定期実行
                 is_enable = (
                     True if item.get("enabled", {}).get("BOOL", False) else False
                 )
-                contents.append(create_content2("定期実行", is_enable, None))
-                # check += f"\n定期実行： {bool_str}"
+                postback = "定期無効" if is_enable else "定期有効"
+                contents.append(create_content2("定期実行", is_enable, postback))
+                # アットマークITランキング
                 is_enable = (
                     True if item.get("ait_enabled", {}).get("BOOL", False) else False
                 )
-                contents.append(create_content2("(1)アットマークITランキング", is_enable, None))
-                # check += f"\n(1)アットマークITランキング： {bool_str}"
+                postback = "1無効" if is_enable else "1有効"
+                contents.append(
+                    create_content2("(1)アットマークITランキング", is_enable, postback)
+                )
+                # アットマークIT新着
                 is_enable = (
                     True
                     if item.get("ait_new_all_enabled", {}).get("BOOL", False)
                     else False
                 )
+                postback = "2無効" if is_enable else "2有効"
                 contents.append(
-                    create_content2("(2)アットマークITの全フォーラムの新着記事", is_enable, None)
+                    create_content2("(2)アットマークITの全フォーラムの新着記事", is_enable, postback)
                 )
-                # check += f"\n(2)アットマークITの全フォーラムの新着記事： {bool_str}"
+                # スマートジャパン新着
                 is_enable = (
                     True
                     if item.get("smart_jp_enabled", {}).get("BOOL", False)
                     else False
                 )
-                contents.append(create_content2("(3)スマートジャパンの新着記事", is_enable, None))
-                # check += f"\n(3)スマートジャパンの新着記事： {bool_str}"
+                postback = "3無効" if is_enable else "3有効"
+                contents.append(
+                    create_content2("(3)スマートジャパンの新着記事", is_enable, postback)
+                )
+                # ITmedia NEWS新着
                 is_enable = (
                     True
                     if item.get("itmedia_news_enabled", {}).get("BOOL", False)
                     else False
                 )
+                postback = "4無効" if is_enable else "4有効"
                 contents.append(
-                    create_content2("(4)ITmedia NEWS 最新記事一覧", is_enable, None)
+                    create_content2("(4)ITmedia NEWS 最新記事一覧", is_enable, postback)
                 )
-                # check += f"\n(4)ITmedia NEWS 最新記事一覧： {bool_str}"
+                # ZDNet Japan新着
                 is_enable = (
                     True
                     if item.get("zdjapan_enabled", {}).get("BOOL", False)
                     else False
                 )
+                postback = "5無効" if is_enable else "5有効"
                 contents.append(
-                    create_content2("(5)ZDNet Japan 最新情報 総合", is_enable, None)
+                    create_content2("(5)ZDNet Japan 最新情報 総合", is_enable, postback)
                 )
-                # check += f"\n(5)ZDNet Japan 最新情報 総合： {bool_str}"
+                # UX MILK新着
                 is_enable = True if item.get("uxmilk", {}).get("BOOL", False) else False
-                contents.append(create_content2("(6)UX MILK の最新ニュース", is_enable, None))
-                # check += f"\n(6)UX MILK の最新ニュース： {bool_str}"
+                postback = "6無効" if is_enable else "6有効"
+                contents.append(
+                    create_content2("(6)UX MILK の最新ニュース", is_enable, postback)
+                )
         footer = create_footer(
             """\
-定期実行を有効にするには、「定期有効」と入力してください
-定期実行を無効にするには、「定期無効」と入力してください
-それぞれの実行を切り替えるには、「番号(有効|無効)」と入力してください"""
+定期実行が無効の場合、有効なものがあってもプッシュ通知されません。
+定期実行が有効の場合、JPCERTの最新情報はオフにできません。
+タップすると有効・無効を切り替えます。"""
         )
-        # check += "\n定期実行を有効にするには、「定期有効」と入力してください"
-        # check += "\n定期実行を無効にするには、「定期無効」と入力してください"
-        # check += "\nそれぞれの実行を切り替えるには、「番号(有効|無効)」と入力してください"
         return create_message(header, contents, footer)
-        # return check
