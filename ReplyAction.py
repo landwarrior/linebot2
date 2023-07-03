@@ -1,10 +1,7 @@
 """応答メッセージをするメソッド群."""
 import logging
 import os
-import random
 import re
-
-import requests
 from decos import log
 from message import (
     create_content,
@@ -14,18 +11,61 @@ from message import (
     create_message,
 )
 
+from Actions import Actions
+
+# 応答メッセージとして許容するメソッド群
 ITEM = {
+    "aitNewAll": {
+        "name": "アットマークITの全フォーラムの新着記事",
+        "must": ["アットマークIT", "新着"],
+    },
+    "aitRanking": {
+        "name": "アットマークITの本日の総合ランキング",
+        "must": ["アットマークIT", "ランキング"],
+    },
+    "itmediaNews": {
+        "name": "ITmedia NEWS 最新記事一覧",
+        "must": ["ITmedia", "最新"],
+    },
+    "jpcertAlert": {
+        "name": "脆弱性関連情報",
+        "must": ["脆弱性"],
+    },
+    "jpcertNotice": {
+        "name": "注意喚起",
+        "must": ["注意喚起"],
+    },
     "lunch": {
         "name": "ランチ検索",
         "must": ["ランチ", "検索"],
+    },
+    "nomitai": {
+        "name": "居酒屋検索",
+        "must": ["居酒屋", "検索"],
     },
     "qiita": {
         "name": "Qiitaの新着",
         "must": ["Qiita", "新着"],
     },
-    "nomitai": {
-        "name": "居酒屋検索",
-        "must": ["居酒屋", "検索"],
+    "smartJp": {
+        "name": "スマートジャパンの新着記事",
+        "must": ["スマートジャパン", "新着"],
+    },
+    "techCrunchJapan": {
+        "name": "Tech Crunch Japanのニュース一覧",
+        "must": ["Tech", "Crunch", "ニュース"],
+    },
+    "uxmilk": {
+        "name": "UX MILKのニュース一覧",
+        "must": ["UX", "MILK", "ニュース"],
+    },
+    "weeklyReport": {
+        "name": "JPCERT Weekly Report",
+        "must": ["JPCERT", "Report"],
+    },
+    "zdjapan": {
+        "name": "ZDNet Japan 最新情報 総合",
+        "must": ["ZDNet", "最新"],
     },
     "teiki": {
         "name": "定期実行確認",
@@ -36,7 +76,7 @@ ITEM = {
 LOGGER = logging.getLogger(name="Lambda")
 
 
-class MethodGroup:
+class ReplyAction:
     """やりたい処理を定義."""
 
     def __init__(self, dynamo, user_id):
@@ -53,16 +93,18 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36"""
     @log(LOGGER)
     def _help(cls):
         """メソッド一覧."""
-        methods = [a for a in dir(cls) if "_" not in a]
+        methods = [a for a in dir(Actions) if "_" not in a]
         header = create_header("メソッド一覧", None)
         contents = []
         for _method in methods:
-            description = re.sub(" {1,}", "", getattr(cls, _method).__doc__)
+            description = re.sub(" {1,}", "", getattr(Actions, _method).__doc__)
             args = re.split(r"\.\n", description)
             title = args[0]
             # 末尾の改行も消している
             description = "\n".join(("".join(args[1:])).split("\n")[1:]).rstrip()
-            label = ITEM.get(_method, {}).get("name")
+            # Returnsは不要
+            description = description.split("\n\n")[0]
+            label = ITEM.get(_method, {}).get("name", title)
             content = {
                 "type": "box",
                 "layout": "vertical",
@@ -91,10 +133,49 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36"""
                 "flex": 0,
             }
             contents.append(content)
+        # 定期実行だけActionsではないので足す
+        description = re.sub(" {1,}", "", getattr(cls, "teiki").__doc__)
+        args = re.split(r"\.\n", description)
+        title = args[0]
+        # 末尾の改行も消している
+        description = "\n".join(("".join(args[1:])).split("\n")[1:]).rstrip()
+        # Returnsは不要
+        description = description.split("\n\n")[0]
+        label = ITEM.get("teiki", {}).get("name", title)
+        content = {
+            "type": "box",
+            "layout": "vertical",
+            "paddingAll": "4px",
+            "contents": [
+                {
+                    "type": "text",
+                    "text": title,
+                    "color": "#35393c",
+                    "wrap": True,
+                },
+                {
+                    "type": "text",
+                    "text": description,
+                    "size": "xs",
+                    "color": "#8C8C8C",
+                    "wrap": True,
+                },
+            ],
+            "action": {
+                "type": "postback",
+                "label": label,
+                "data": label,
+                "displayText": label,
+            },
+            "flex": 0,
+        }
+        contents.append(content)
+
         message = create_message(header, contents, None)
 
         return message
 
+    @log(LOGGER)
     def _method_search(self, text):
         """対象のメソッドがあればそのメソッド名を返す."""
         for key, value in ITEM.items():
@@ -106,109 +187,30 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36"""
                 return key
 
     @log(LOGGER)
-    def lunch(self, args: list) -> None:
-        """ランチ営業店舗検索.
-
-        スペース区切りもしくは改行区切りで二つ以上キーワードを入力すると場所での検索も可能です。
-        一つの場合はデフォルト座標付近での検索となります。
-        """
-        _param = {
-            "key": self.HOTPEPPER,
-            "large_service_area": "SS10",  # 関東
-            "range": "3",
-            "order": "2",
-            "type": "lite",
-            "format": "json",
-            "count": "100",
-            "lunch": "1",
-        }
-        if not args or len(args) == 1:
-            _param["lat"] = os.environ["default_lat"]
-            _param["lng"] = os.environ["default_lng"]
-        if len(args) > 0:
-            _param["keyword"] = " ".join(list(args))
-        hotpepper = requests.get(
-            "http://webservice.recruit.co.jp/hotpepper/gourmet/v1/",
-            params=_param,
-            headers=self.HEADER,
-        )
+    async def executeAction(self, func_name: str, args: list) -> dict:
+        """メソッドを実行して応答メッセージを作成して返す."""
+        if func_name == "teiki":
+            return self.teiki()
         contents = []
-        shops = hotpepper.json()["results"]["shop"]
-        if len(shops) > 0:
-            shop = random.choice(shops)
-            content = create_content(shop["name"], shop["urls"]["pc"])
-            contents.append(content)
+        data = await getattr(Actions, func_name)(args)
+        if data is None:
+            # エラーの場合
+            contents = [create_content("エラーが発生したため取得できませんでした", None)]
+        elif len(data) == 0:
+            # 検索結果なし
+            contents = [create_content("取得できるものがありませんでした", None)]
         else:
-            content = create_content("検索結果がありません", None)
-        footer = create_footer("Powered by ホットペッパー Webサービス")
-        header = create_header("ランチ営業店舗検索", None)
+            for d in data:
+                content = create_content(d["title"], d["link"])
+                contents.append(content)
+        header = create_header(ITEM.get(func_name, {}).get("name"), None)
+        footer = None
+        if func_name in ["lunch", "nomitai"]:
+            footer = create_footer("Powered by ホットペッパー Webサービス")
         return create_message(header, contents, footer)
 
     @log(LOGGER)
-    def qiita(self, args: list) -> None:
-        """Qiita新着記事取得.
-
-        Qiitaの新着記事を3件取得します。
-        """
-        res = requests.get(
-            "https://qiita.com/api/v2/items?page=1&per_page=3", headers=self.HEADER
-        )
-        data = res.json()
-        contents = []
-        for d in data:
-            content = create_content(d["title"], d["url"])
-            contents.append(content)
-        header = create_header("Qiitaの新着記事", None)
-        return create_message(header, contents, None)
-
-    @log(LOGGER)
-    def nomitai(self, args: list) -> None:
-        """居酒屋検索.
-
-        スペース区切りもしくは改行区切りで二つ以上キーワードを入力すると場所での検索も可能です。
-        一つの場合はデフォルト座標付近での検索となります。
-        """
-        _param = {
-            "key": self.HOTPEPPER,
-            "large_service_area": "SS10",  # 関東
-            "range": "5",
-            "order": "2",
-            "type": "lite",
-            "format": "json",
-            "count": "100",
-        }
-        if not args or len(args) == 1:
-            _param["lat"] = os.environ["default_lat"]
-            _param["lng"] = os.environ["default_lng"]
-            if not args:
-                # デフォルトは居酒屋
-                _param["genre"] = "G001"
-        if len(args) > 0:
-            _param["keyword"] = " ".join(list(args))
-        if len(args) >= 2:
-            # 範囲を絞る
-            _param["range"] = 3
-
-        hotpepper = requests.get(
-            "http://webservice.recruit.co.jp/hotpepper/gourmet/v1/",
-            params=_param,
-            headers=self.HEADER,
-        )
-        contents = []
-        shops = hotpepper.json()["results"]["shop"]
-        if len(shops) == 0:
-            content = create_content("検索結果がありません", None)
-            contents.append(content)
-        else:
-            shop = random.choice(shops)
-            content = create_content(shop["name"], shop["urls"]["pc"])
-            contents.append(content)
-        header = create_header("居酒屋検索", None)
-        footer = create_footer("Powered by ホットペッパー Webサービス")
-        return create_message(header, contents, footer)
-
-    @log(LOGGER)
-    def teiki(self, args: list) -> None:
+    def teiki(self) -> None:
         """定期実行.
 
         有効にしたら、毎日正午にニュース等を取得します。
