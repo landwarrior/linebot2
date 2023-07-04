@@ -97,8 +97,8 @@ def build_contents(value: dict, data: list, name: str) -> list:
     """
     contents = []
     if value.get(name, False) or ITEM[name]["must"]:
-        contents.append(create_header(ITEM[name]["name"], None))
         if data is not None and len(data) > 0:
+            contents.append(create_header(ITEM[name]["name"], None))
             for d in data:
                 contents.append(create_content(d["title"], d["link"]))
     return contents
