@@ -154,6 +154,41 @@ class Actions:
 
     @classmethod
     @log(LOGGER)
+    async def techTarget(cls, *_) -> list:
+        """TechTarget Japanの最新記事一覧.
+
+        TechTarget Japanの最新記事一覧を取得します。
+
+        Returns:
+            list: 辞書を格納した配列を返す。エラー発生時、Noneを返す
+            [
+                {'title': '<記事のタイトル>', 'link': '<記事のリンク>'}, ...
+            ]
+        """
+        url = "https://rss.itmedia.co.jp/rss/2.0/techtarget.xml"
+        LOGGER.debug(f"GET {url} header: {HEADER}")
+        contents = []
+        try:
+            res = requests.get(url, headers=HEADER)
+            root = ET.fromstring(res.content.decode("utf8"))
+            for child in root[0]:
+                if "item" in child.tag.lower():
+                    pub_date = datetime.datetime.strptime(
+                        get_text(child, "pubdate")[0:25], "%a, %d %b %Y %H:%M:%S"
+                    )
+                    title = get_text(child, "title")
+                    if YESTERDAY <= pub_date and not title.startswith("PR："):
+                        content = {
+                            "title": title,
+                            "link": get_text(child, "link"),
+                        }
+                        contents.append(content)
+        except Exception:
+            LOGGER.error(f"{traceback.format_exc()}")
+        return contents
+
+    @classmethod
+    @log(LOGGER)
     async def jpcertAlert(cls, *_) -> list:
         """脆弱性関連情報.
 
@@ -403,35 +438,6 @@ class Actions:
                             "link": get_text(child, "link"),
                         }
                         contents.append(content)
-        except Exception:
-            LOGGER.error(f"{traceback.format_exc()}")
-        return contents
-
-    @classmethod
-    @log(LOGGER)
-    async def techCrunchJapan(cls, *_) -> list:
-        """Tech Crunch Japanのニュース一覧.
-
-        Tech Crunch Japanのニュースを取得します。
-        RSSフィードの情報を取得するので、うまく取れないかもしれません。
-
-        Returns:
-            list: 辞書を格納した配列を返す。エラー発生時、Noneを返す
-            [
-                {'title': '<記事のタイトル>', 'link': '<記事のリンク>'}, ...
-            ]
-        """
-        contents = []
-        try:
-            res = requests.get("https://jp.techcrunch.com/feed/", headers=HEADER)
-            root = ET.fromstring(res.content.decode("utf8"))
-            for child in root[0]:
-                if "item" in child.tag.lower():
-                    content = {
-                        "title": get_text(child, "title"),
-                        "link": get_text(child, "link"),
-                    }
-                    contents.append(content)
         except Exception:
             LOGGER.error(f"{traceback.format_exc()}")
         return contents

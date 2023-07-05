@@ -99,24 +99,6 @@ def reply(message: dict) -> None:
     )
 
 
-def push(user_list: list, message: dict) -> None:
-    """プッシュ通知する."""
-    if not user_list:
-        # 送信先がなければ何もしない
-        return
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {os.environ['access_token']}",
-    }
-    url = "https://api.line.me/v2/bot/message/multicast"
-    payload = {"to": user_list, "messages": [message]}
-    LOGGER.info(f"[REQUEST] param: {json.dumps(payload)}")
-    res = requests.post(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
-    LOGGER.info(
-        f"[RESPONSE] [STATUS]{res.status_code} [HEADER]{res.headers} [CONTENT]{res.content}"
-    )
-
-
 def add_user(user_id: str) -> None:
     param = {
         "TableName": "users",
@@ -192,6 +174,12 @@ def toggle_zdjapan(enabled: bool) -> None:
 def toggle_uxmilk(enabled: bool) -> None:
     """UX MILKの新着の定期実行有効化、もしくは無効化."""
     params = {"uxmilk": {"BOOL": enabled}}
+    update_user(USER_ID, params)
+
+
+def toggle_techTarget(enabled: bool) -> None:
+    """TechTargetの新着の定期実行有効化、もしくは無効化."""
+    params = {"techTarget": {"BOOL": enabled}}
     update_user(USER_ID, params)
 
 
@@ -306,6 +294,12 @@ def lambda_handler(event, context):
     elif len(args) > 0 and args[0] == "6無効":
         toggle_uxmilk(False)
         reply_message("UX MILK の最新ニュースを無効にしました")
+    elif len(args) > 0 and args[0] == "7有効":
+        toggle_techTarget(True)
+        reply_message("TechTarget Japanの最新記事一覧を有効にしました")
+    elif len(args) > 0 and args[0] == "7無効":
+        toggle_techTarget(False)
+        reply_message("TechTarget Japanの最新記事一覧を無効にしました")
     else:
         func = replyAction._method_search("".join(args))
         if func:

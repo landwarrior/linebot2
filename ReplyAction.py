@@ -71,6 +71,10 @@ ITEM = {
         "name": "定期実行確認",
         "must": ["定期", "確認"],
     },
+    "techTarget": {
+        "name": "TechTarget Japanの最新記事一覧",
+        "must": ["Tech", "Target"],
+    },
 }
 
 LOGGER = logging.getLogger(name="Lambda")
@@ -279,6 +283,14 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36"""
                 postback = "6無効" if is_enable else "6有効"
                 contents.append(
                     create_content2("(6)UX MILK の最新ニュース", is_enable, postback)
+                )
+                # TechTarget Japan最新記事
+                is_enable = (
+                    True if item.get("techTarget", {}).get("BOOL", False) else False
+                )
+                postback = "7無効" if is_enable else "7有効"
+                contents.append(
+                    create_content2("(7)TechTarget Japanの最新記事一覧", is_enable, postback)
                 )
         footer = create_footer(
             """\

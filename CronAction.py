@@ -52,6 +52,10 @@ ITEM = {
         "name": "ZDNet Japan 最新情報 総合",
         "must": False,
     },
+    "techTarget": {
+        "name": "TechTarget Japanの最新記事一覧",
+        "must": False,
+    },
     "jpcertAlert": {
         "name": "脆弱性関連情報",
         "must": True,
@@ -119,22 +123,24 @@ class CronAction:
                 user_settings[item["user_id"]["S"]] = {
                     "aitRanking": item.get("ait_enabled", {}).get("BOOL", False),
                     "aitNewAll": item.get("ait_new_all_enabled", {}).get("BOOL", False),
-                    "smartJp": item.get("smart_jp_enabled", {}).get("BOOL", False),
                     "itmediaNews": item.get("itmedia_news_enabled", {}).get(
                         "BOOL", False
                     ),
-                    "zdjapan": item.get("zdjapan_enabled", {}).get("BOOL", False),
+                    "smartJp": item.get("smart_jp_enabled", {}).get("BOOL", False),
                     "uxmilk": item.get("uxmilk", {}).get("BOOL", False),
+                    "zdjapan": item.get("zdjapan_enabled", {}).get("BOOL", False),
+                    "techTarget": item.get("techTarget", {}).get("BOOL", False),
                 }
         aitRanking = await Actions.aitRanking()
         aitNewAll = await Actions.aitNewAll()
         itmediaNews = await Actions.itmediaNews()
-        jpcertAlert = await Actions.jpcertAlert()
-        jpcertNotice = await Actions.jpcertNotice()
         smartJp = await Actions.smartJp()
         uxmilk = await Actions.uxmilk()
-        weeklyReport = await Actions.weeklyReport()
         zdjapan = await Actions.zdjapan()
+        techTarget = await Actions.techTarget()
+        jpcertAlert = await Actions.jpcertAlert()
+        jpcertNotice = await Actions.jpcertNotice()
+        weeklyReport = await Actions.weeklyReport()
 
         for user_id, value in user_settings.items():
             # ユーザーごとにコンテンツを生成し、配信
@@ -145,6 +151,7 @@ class CronAction:
             contents.extend(build_contents(value, smartJp, "smartJp"))
             contents.extend(build_contents(value, uxmilk, "uxmilk"))
             contents.extend(build_contents(value, zdjapan, "zdjapan"))
+            contents.extend(build_contents(value, techTarget, "techTarget"))
             contents.extend(build_contents(value, jpcertAlert, "jpcertAlert"))
             contents.extend(build_contents(value, jpcertNotice, "jpcertNotice"))
             contents.extend(build_contents(value, weeklyReport, "weeklyReport"))
