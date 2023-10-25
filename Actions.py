@@ -4,10 +4,10 @@ import logging
 import os
 import traceback
 import xml.etree.ElementTree as ET
-from bs4 import BeautifulSoup
-import requests
-from decos import log
 
+import requests
+from bs4 import BeautifulSoup
+from decos import log
 
 LOGGER = logging.getLogger(name="Lambda")
 
@@ -30,7 +30,7 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36"""
 }
 
 
-def get_text(item: list, tag_name: str) -> str:
+def get_text(item, tag_name: str) -> str:
     """XMLのタグ名を基に文字列を取得.
 
     タグ名は小文字に置き換えて検索します。
@@ -67,9 +67,7 @@ class Actions:
                         continue
                     if get_text(child, "title").startswith("PR： "):
                         continue
-                    pub_date = datetime.datetime.strptime(
-                        get_text(child, "pubdate")[0:25], "%a, %d %b %Y %H:%M:%S"
-                    )
+                    pub_date = datetime.datetime.strptime(get_text(child, "pubdate")[0:25], "%a, %d %b %Y %H:%M:%S")
                     if YESTERDAY <= pub_date:
                         content = {
                             "title": get_text(child, "title"),
@@ -98,12 +96,7 @@ class Actions:
         contents = []
         try:
             res = requests.get(url, headers=HEADER)
-            json_str = (
-                res.content.decode("sjis")
-                .replace("rankingindex(", "")
-                .replace(")", "")
-                .replace("'", '"')
-            )
+            json_str = res.content.decode("sjis").replace("rankingindex(", "").replace(")", "").replace("'", '"')
             json_data = json.loads(json_str)
             for item in json_data["data"]:
                 if len(contents) >= 10:
@@ -139,9 +132,7 @@ class Actions:
             root = ET.fromstring(res.content.decode("utf8"))
             for child in root[0]:
                 if "item" in child.tag.lower():
-                    pub_date = datetime.datetime.strptime(
-                        get_text(child, "pubdate")[0:25], "%a, %d %b %Y %H:%M:%S"
-                    )
+                    pub_date = datetime.datetime.strptime(get_text(child, "pubdate")[0:25], "%a, %d %b %Y %H:%M:%S")
                     if YESTERDAY <= pub_date:
                         content = {
                             "title": get_text(child, "title"),
@@ -173,9 +164,7 @@ class Actions:
             root = ET.fromstring(res.content.decode("utf8"))
             for child in root[0]:
                 if "item" in child.tag.lower():
-                    pub_date = datetime.datetime.strptime(
-                        get_text(child, "pubdate")[0:25], "%a, %d %b %Y %H:%M:%S"
-                    )
+                    pub_date = datetime.datetime.strptime(get_text(child, "pubdate")[0:25], "%a, %d %b %Y %H:%M:%S")
                     title = get_text(child, "title")
                     if YESTERDAY <= pub_date and not title.startswith("PR："):
                         content = {
@@ -209,12 +198,8 @@ class Actions:
             for data in items:
                 if data.select("h3") and data.select("h3")[0].text == "脆弱性関連情報":
                     for li in data.select("ul.list>li"):
-                        published = (
-                            li.select("a")[0].select("span.left_area")[0].text.strip()
-                        )
-                        dt_published = datetime.datetime.strptime(
-                            published, "%Y-%m-%d %H:%M"
-                        )
+                        published = li.select("a")[0].select("span.left_area")[0].text.strip()
+                        dt_published = datetime.datetime.strptime(published, "%Y-%m-%d %H:%M")
                         title = li.select("a")[0].select("span.right_area")[0].text
                         if YESTERDAY <= dt_published:
                             link = li.select("a")[0].get("href")
@@ -391,9 +376,7 @@ class Actions:
                 {'title': '<記事のタイトル>', 'link': '<記事のリンク>'}, ...
             ]
         """
-        res = requests.get(
-            "https://qiita.com/api/v2/items?page=1&per_page=3", headers=HEADER
-        )
+        res = requests.get("https://qiita.com/api/v2/items?page=1&per_page=3", headers=HEADER)
         data = res.json()
         contents = []
         for d in data:
@@ -429,9 +412,7 @@ class Actions:
                         continue
                     if get_text(child, "title").startswith("PR： "):
                         continue
-                    pub_date = datetime.datetime.strptime(
-                        get_text(child, "pubdate")[0:25], "%a, %d %b %Y %H:%M:%S"
-                    )
+                    pub_date = datetime.datetime.strptime(get_text(child, "pubdate")[0:25], "%a, %d %b %Y %H:%M:%S")
                     if YESTERDAY <= pub_date:
                         content = {
                             "title": get_text(child, "title"),
@@ -463,9 +444,7 @@ class Actions:
             root = ET.fromstring(res.content.decode("utf8"))
             for child in root[0]:
                 if "item" in child.tag.lower():
-                    pub_date = datetime.datetime.strptime(
-                        get_text(child, "pubdate")[0:25], "%a, %d %b %Y %H:%M:%S"
-                    )
+                    pub_date = datetime.datetime.strptime(get_text(child, "pubdate")[0:25], "%a, %d %b %Y %H:%M:%S")
                     if YESTERDAY <= pub_date:
                         content = {
                             "title": get_text(child, "title"),
@@ -530,9 +509,7 @@ class Actions:
             root = ET.fromstring(res.content.decode("utf8"))
             for child in root:
                 if "item" in child.tag.lower():
-                    pub_date = datetime.datetime.strptime(
-                        get_text(child, "date")[0:19], "%Y-%m-%dT%H:%M:%S"
-                    )
+                    pub_date = datetime.datetime.strptime(get_text(child, "date")[0:19], "%Y-%m-%dT%H:%M:%S")
                     if YESTERDAY <= pub_date:
                         content = {
                             "title": get_text(child, "title"),

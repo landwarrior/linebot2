@@ -16,14 +16,14 @@
 import json
 import logging
 import os
+
 import requests
+from Actions import Actions
 from decos import log
 from message import create_content, create_header, create_message
-from Actions import Actions
-
 
 # 配信メッセージとして許容するメソッド群
-ITEM = {
+ITEM: dict[str, dict[str, str | bool]] = {
     "aitNewAll": {
         "name": "アットマークITの全フォーラムの新着記事",
         "must": False,
@@ -86,9 +86,7 @@ def push(user_list: list, message: dict) -> None:
     payload = {"to": user_list, "messages": [message]}
     LOGGER.info(f"[REQUEST] param: {json.dumps(payload)}")
     res = requests.post(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
-    LOGGER.info(
-        f"[RESPONSE] [STATUS]{res.status_code} [HEADER]{res.headers} [CONTENT]{res.content}"
-    )
+    LOGGER.info(f"[RESPONSE] [STATUS]{res.status_code} [HEADER]{res.headers} [CONTENT]{res.content}")
 
 
 def build_contents(value: dict, data: list, name: str) -> list:
@@ -123,9 +121,7 @@ class CronAction:
                 user_settings[item["user_id"]["S"]] = {
                     "aitRanking": item.get("ait_enabled", {}).get("BOOL", False),
                     "aitNewAll": item.get("ait_new_all_enabled", {}).get("BOOL", False),
-                    "itmediaNews": item.get("itmedia_news_enabled", {}).get(
-                        "BOOL", False
-                    ),
+                    "itmediaNews": item.get("itmedia_news_enabled", {}).get("BOOL", False),
                     "smartJp": item.get("smart_jp_enabled", {}).get("BOOL", False),
                     "uxmilk": item.get("uxmilk", {}).get("BOOL", False),
                     "zdjapan": item.get("zdjapan_enabled", {}).get("BOOL", False),

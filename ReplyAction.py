@@ -2,16 +2,10 @@
 import logging
 import os
 import re
-from decos import log
-from message import (
-    create_content,
-    create_content2,
-    create_footer,
-    create_header,
-    create_message,
-)
 
 from Actions import Actions
+from decos import log
+from message import create_content, create_content2, create_footer, create_header, create_message
 
 # 応答メッセージとして許容するメソッド群
 ITEM = {
@@ -225,73 +219,37 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36"""
         for item in self.dynamo.scan(**{"TableName": "users"})["Items"]:
             if item["user_id"]["S"] == self.user_id:
                 # 定期実行
-                is_enable = (
-                    True if item.get("enabled", {}).get("BOOL", False) else False
-                )
+                is_enable = True if item.get("enabled", {}).get("BOOL", False) else False
                 postback = "定期無効" if is_enable else "定期有効"
                 contents.append(create_content2("定期実行", is_enable, postback))
                 # アットマークITランキング
-                is_enable = (
-                    True if item.get("ait_enabled", {}).get("BOOL", False) else False
-                )
+                is_enable = True if item.get("ait_enabled", {}).get("BOOL", False) else False
                 postback = "1無効" if is_enable else "1有効"
-                contents.append(
-                    create_content2("(1)アットマークITランキング", is_enable, postback)
-                )
+                contents.append(create_content2("(1)アットマークITランキング", is_enable, postback))
                 # アットマークIT新着
-                is_enable = (
-                    True
-                    if item.get("ait_new_all_enabled", {}).get("BOOL", False)
-                    else False
-                )
+                is_enable = True if item.get("ait_new_all_enabled", {}).get("BOOL", False) else False
                 postback = "2無効" if is_enable else "2有効"
-                contents.append(
-                    create_content2("(2)アットマークITの全フォーラムの新着記事", is_enable, postback)
-                )
+                contents.append(create_content2("(2)アットマークITの全フォーラムの新着記事", is_enable, postback))
                 # スマートジャパン新着
-                is_enable = (
-                    True
-                    if item.get("smart_jp_enabled", {}).get("BOOL", False)
-                    else False
-                )
+                is_enable = True if item.get("smart_jp_enabled", {}).get("BOOL", False) else False
                 postback = "3無効" if is_enable else "3有効"
-                contents.append(
-                    create_content2("(3)スマートジャパンの新着記事", is_enable, postback)
-                )
+                contents.append(create_content2("(3)スマートジャパンの新着記事", is_enable, postback))
                 # ITmedia NEWS新着
-                is_enable = (
-                    True
-                    if item.get("itmedia_news_enabled", {}).get("BOOL", False)
-                    else False
-                )
+                is_enable = True if item.get("itmedia_news_enabled", {}).get("BOOL", False) else False
                 postback = "4無効" if is_enable else "4有効"
-                contents.append(
-                    create_content2("(4)ITmedia NEWS 最新記事一覧", is_enable, postback)
-                )
+                contents.append(create_content2("(4)ITmedia NEWS 最新記事一覧", is_enable, postback))
                 # ZDNet Japan新着
-                is_enable = (
-                    True
-                    if item.get("zdjapan_enabled", {}).get("BOOL", False)
-                    else False
-                )
+                is_enable = True if item.get("zdjapan_enabled", {}).get("BOOL", False) else False
                 postback = "5無効" if is_enable else "5有効"
-                contents.append(
-                    create_content2("(5)ZDNet Japan 最新情報 総合", is_enable, postback)
-                )
+                contents.append(create_content2("(5)ZDNet Japan 最新情報 総合", is_enable, postback))
                 # UX MILK新着
                 is_enable = True if item.get("uxmilk", {}).get("BOOL", False) else False
                 postback = "6無効" if is_enable else "6有効"
-                contents.append(
-                    create_content2("(6)UX MILK の最新ニュース", is_enable, postback)
-                )
+                contents.append(create_content2("(6)UX MILK の最新ニュース", is_enable, postback))
                 # TechTarget Japan最新記事
-                is_enable = (
-                    True if item.get("techTarget", {}).get("BOOL", False) else False
-                )
+                is_enable = True if item.get("techTarget", {}).get("BOOL", False) else False
                 postback = "7無効" if is_enable else "7有効"
-                contents.append(
-                    create_content2("(7)TechTarget Japanの最新記事一覧", is_enable, postback)
-                )
+                contents.append(create_content2("(7)TechTarget Japanの最新記事一覧", is_enable, postback))
         footer = create_footer(
             """\
 定期実行が無効の場合、有効なものがあってもプッシュ通知されません。

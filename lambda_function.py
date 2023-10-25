@@ -33,17 +33,14 @@ import os
 import boto3
 
 import requests
-from ReplyAction import ReplyAction
 from CronAction import CronAction
-
+from ReplyAction import ReplyAction
 
 LOGGER = logging.getLogger(name="Lambda")
 LOGGER.setLevel(logging.INFO)
 stream_handler = logging.StreamHandler()
 stream_handler.setLevel(logging.INFO)
-formatter = logging.Formatter(
-    "%(asctime)s [%(levelname)s] %(message)s [%(filename)s in %(lineno)d]"
-)
+formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s [%(filename)s in %(lineno)d]")
 stream_handler.setFormatter(formatter)
 LOGGER.addHandler(stream_handler)
 
@@ -80,9 +77,7 @@ def reply_message(message: str) -> None:
         ],
     }
     res = requests.post(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
-    LOGGER.info(
-        f"[RESPONSE] [STATUS]{res.status_code} [HEADER]{res.headers} [CONTENT]{res.content}"
-    )
+    LOGGER.info(f"[RESPONSE] [STATUS]{res.status_code} [HEADER]{res.headers} [CONTENT]{res.content}")
 
 
 def reply(message: dict) -> None:
@@ -94,9 +89,7 @@ def reply(message: dict) -> None:
     url = "https://api.line.me/v2/bot/message/reply"
     payload = {"replyToken": TOKEN, "messages": [message]}
     res = requests.post(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
-    LOGGER.info(
-        f"[RESPONSE] [STATUS]{res.status_code} [HEADER]{res.headers} [CONTENT]{res.content}"
-    )
+    LOGGER.info(f"[RESPONSE] [STATUS]{res.status_code} [HEADER]{res.headers} [CONTENT]{res.content}")
 
 
 def add_user(user_id: str) -> None:
@@ -222,18 +215,12 @@ def lambda_handler(event, context):
     # else:
     #     return respond(ValueError('Unsupported method "{}"'.format(operation)))
     # LINE follow user
-    if (
-        isinstance(body, dict)
-        and body.get("events", [{"type": ""}])[0]["type"] == "follow"
-    ):
+    if isinstance(body, dict) and body.get("events", [{"type": ""}])[0]["type"] == "follow":
         if body["events"][0]["source"]["type"] == "user":
             user_id = body["events"][0]["source"]["userId"]
             add_user(user_id)
     # LINE unfollow user
-    if (
-        isinstance(body, dict)
-        and body.get("events", [{"type": ""}])[0]["type"] == "unfollow"
-    ):
+    if isinstance(body, dict) and body.get("events", [{"type": ""}])[0]["type"] == "unfollow":
         if body["events"][0]["source"]["type"] == "user":
             user_id = body["events"][0]["source"]["userId"]
             delete_user(user_id)
