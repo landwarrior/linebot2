@@ -61,7 +61,11 @@ USER_ID = ""
 
 
 def reply_message(message: str) -> None:
-    """返信."""
+    """返信.
+
+    Args:
+        message (str): 送信するメッセージ
+    """
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {os.environ['access_token']}",
@@ -81,7 +85,11 @@ def reply_message(message: str) -> None:
 
 
 def reply(message: dict) -> None:
-    """返信."""
+    """返信.
+
+    Args:
+        message (dict): 返信する辞書データ
+    """
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {os.environ['access_token']}",
