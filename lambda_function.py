@@ -25,13 +25,13 @@ DELETE:
     }
 }
 """
+
 import asyncio
 import json
 import logging
 import os
 
 import boto3
-
 import requests
 from CronAction import CronAction
 from ReplyAction import ReplyAction
@@ -48,7 +48,6 @@ dynamo = boto3.client("dynamodb")
 
 TOKEN = ""
 USER_ID = ""
-
 
 # def respond(err, res=None):
 #     return {
@@ -184,7 +183,7 @@ def toggle_techTarget(enabled: bool) -> None:
     update_user(USER_ID, params)
 
 
-def lambda_handler(event, context):
+def lambda_handler(event, context):  # noqa: C901
     """Demonstrates a simple HTTP endpoint using API Gateway. You have full
     access to the request and response payload, including headers and
     status code.

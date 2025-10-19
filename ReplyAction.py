@@ -1,4 +1,5 @@
 """応答メッセージをするメソッド群."""
+
 import logging
 import os
 import re
