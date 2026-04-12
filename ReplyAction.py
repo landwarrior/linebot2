@@ -8,6 +8,7 @@ from Actions import Actions
 from decos import log
 from message import create_content, create_content2, create_footer, create_header, create_message
 
+
 # 応答メッセージとして許容するメソッド群
 ITEM = {
     "aitNewAll": {
@@ -79,6 +80,7 @@ class ReplyAction:
     """やりたい処理を定義."""
 
     def __init__(self, dynamo, user_id):
+        """コンストラクタ."""
         self.dynamo = dynamo
         self.user_id = user_id
         self.HOTPEPPER = os.environ.get("hotpepper")
@@ -133,7 +135,7 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36"""
             }
             contents.append(content)
         # 定期実行だけActionsではないので足す
-        description = re.sub(" {1,}", "", getattr(cls, "teiki").__doc__)
+        description = re.sub(" {1,}", "", cls.teiki.__doc__)  # type: ignore
         args = re.split(r"\.\n", description)
         title = args[0]
         # 末尾の改行も消している
@@ -202,14 +204,14 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36"""
             for d in data:
                 content = create_content(d["title"], d["link"])
                 contents.append(content)
-        header = create_header(ITEM.get(func_name, {}).get("name"), None)
+        header = create_header(ITEM.get(func_name, {}).get("name", ""), None)
         footer = None
         if func_name in ["lunch", "nomitai"]:
             footer = create_footer("Powered by ホットペッパー Webサービス")
         return create_message(header, contents, footer)
 
     @log(LOGGER)
-    def teiki(self) -> None:
+    def teiki(self) -> dict:
         """定期実行.
 
         有効にしたら、毎日正午にニュース等を取得します。
@@ -217,38 +219,38 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36"""
         """
         header = create_header("定期実行の確認", None)
         contents = []
-        for item in self.dynamo.scan(**{"TableName": "users"})["Items"]:
+        for item in self.dynamo.scan(TableName="users")["Items"]:
             if item["user_id"]["S"] == self.user_id:
                 # 定期実行
-                is_enable = True if item.get("enabled", {}).get("BOOL", False) else False
+                is_enable = bool(item.get("enabled", {}).get("BOOL", False))
                 postback = "定期無効" if is_enable else "定期有効"
                 contents.append(create_content2("定期実行", is_enable, postback))
                 # アットマークITランキング
-                is_enable = True if item.get("ait_enabled", {}).get("BOOL", False) else False
+                is_enable = bool(item.get("ait_enabled", {}).get("BOOL", False))
                 postback = "1無効" if is_enable else "1有効"
                 contents.append(create_content2("(1)アットマークITランキング", is_enable, postback))
                 # アットマークIT新着
-                is_enable = True if item.get("ait_new_all_enabled", {}).get("BOOL", False) else False
+                is_enable = bool(item.get("ait_new_all_enabled", {}).get("BOOL", False))
                 postback = "2無効" if is_enable else "2有効"
                 contents.append(create_content2("(2)アットマークITの全フォーラムの新着記事", is_enable, postback))
                 # スマートジャパン新着
-                is_enable = True if item.get("smart_jp_enabled", {}).get("BOOL", False) else False
+                is_enable = bool(item.get("smart_jp_enabled", {}).get("BOOL", False))
                 postback = "3無効" if is_enable else "3有効"
                 contents.append(create_content2("(3)スマートジャパンの新着記事", is_enable, postback))
                 # ITmedia NEWS新着
-                is_enable = True if item.get("itmedia_news_enabled", {}).get("BOOL", False) else False
+                is_enable = bool(item.get("itmedia_news_enabled", {}).get("BOOL", False))
                 postback = "4無効" if is_enable else "4有効"
                 contents.append(create_content2("(4)ITmedia NEWS 最新記事一覧", is_enable, postback))
                 # ZDNet Japan新着
-                is_enable = True if item.get("zdjapan_enabled", {}).get("BOOL", False) else False
+                is_enable = bool(item.get("zdjapan_enabled", {}).get("BOOL", False))
                 postback = "5無効" if is_enable else "5有効"
                 contents.append(create_content2("(5)ZDNet Japan 最新情報 総合", is_enable, postback))
                 # UX MILK新着
-                is_enable = True if item.get("uxmilk", {}).get("BOOL", False) else False
+                is_enable = bool(item.get("uxmilk", {}).get("BOOL", False))
                 postback = "6無効" if is_enable else "6有効"
                 contents.append(create_content2("(6)UX MILK の最新ニュース", is_enable, postback))
                 # TechTarget Japan最新記事
-                is_enable = True if item.get("techTarget", {}).get("BOOL", False) else False
+                is_enable = bool(item.get("techTarget", {}).get("BOOL", False))
                 postback = "7無効" if is_enable else "7有効"
                 contents.append(create_content2("(7)TechTarget Japanの最新記事一覧", is_enable, postback))
         footer = create_footer(

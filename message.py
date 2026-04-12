@@ -1,5 +1,13 @@
-def create_header(title: str, uri: str) -> dict:
-    """メッセージヘッダーを作成する."""
+"""メッセージ関連."""
+
+
+def create_header(title: str, uri: str | None) -> dict:
+    """メッセージヘッダーを作成する.
+
+    Args:
+        title (str): タイトル.
+        uri (str | None): URI.
+    """
     header = {
         "type": "box",
         "layout": "vertical",
@@ -8,13 +16,17 @@ def create_header(title: str, uri: str) -> dict:
         "paddingAll": "4px",
     }
     if uri:
-        uri = {"action": {"type": "uri", "uri": uri}}
-        header.update(uri)
+        header.update({"action": {"type": "uri", "uri": uri}})
     return header
 
 
-def create_content(description: str, uri: str) -> dict:
-    """メッセージのcontentを作成する."""
+def create_content(description: str, uri: str | None) -> dict:
+    """メッセージのcontentを作成する.
+
+    Args:
+        description (str): 説明.
+        uri (str | None): URI.
+    """
     content = {
         "type": "box",
         "layout": "horizontal",
@@ -30,8 +42,7 @@ def create_content(description: str, uri: str) -> dict:
         "flex": 0,
     }
     if uri:
-        uri = {"action": {"type": "uri", "uri": uri}}
-        content.update(uri)
+        content.update({"action": {"type": "uri", "uri": uri}})
     return content
 
 
@@ -95,8 +106,17 @@ def create_footer(text: str) -> dict:
     return footer
 
 
-def create_message(header: dict, contents: list, footer: dict):
-    """メッセージ全体を作成する."""
+def create_message(header: dict, contents: list, footer: dict | None) -> dict:
+    """メッセージ全体を作成する.
+
+    Args:
+        header (dict): ヘッダーの辞書データ.
+        contents (list): コンテンツのリスト.
+        footer (dict | None): フッター要素.
+
+    Returns:
+        dict: メッセージの辞書データ.
+    """
     message = {
         "type": "flex",
         "altText": "通知",

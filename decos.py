@@ -1,7 +1,11 @@
+"""デコレータ群."""
+
 import functools
 
 
 def log(logger):
+    """ロギングデコレータ."""
+
     def log_wrapper(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):

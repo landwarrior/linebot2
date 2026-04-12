@@ -1,26 +1,64 @@
-[tool.black]
-line-length = 120
-target-version = ['py313']
+[tool.ruff]
+# 基本設定
+line-length = 120 # 1行の最大文字数
+target-version = "py314" # 対象とするPythonバージョン
+fix = true # 自動修正を有効にする
+# 解析対象から除外するパス
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "node_modules",
+]
 
-[tool.isort]
-profile = "black"
-line_length = 120
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
-split_on_trailing_comma = true
-force_single_line = false
-skip = [".venv", ".git", "migrations"]
-src_paths = ["Actions.py", "CronAction.py", "ReplyAction.py"]
+[tool.ruff.lint]
+# プレビュー段階の lint ルールや挙動を有効化する場合はコメントを解除する (余計な警告が出ることがあるので普段は無効)
+# preview = true
+# 有効にするルールセット
+select = [
+    "E",   # pycodestyleのエラー
+    "W",   # pycodestyleの警告
+    "F",   # pyflakesによる検出
+    "I",   # isortによるインポート順序
+    "B",   # flake8-bugbearによるバグの検出
+    "C4",  # flake8-comprehensionsによる内包表記の改善
+    "C90", # mccabeによる循環的複雑度の検出
+    "D",   # pydocstyleによるドキュメンテーションスタイルの検出
+    "UP",  # pyupgradeによる最新構文へのアップグレード
+    "ARG", # flake8-unused-argumentsによる未使用引数の検出
+    "SIM", # flake8-simplifyによる単純化提案
+    "TCH", # flake8-type-checkingによる型チェックの最適化
+    "PIE", # flake8-pieによるPython標準の改善
+    "TID", # flake8-tidy-importsによるインポートの整理
+    "Q",   # flake8-quotesによるクォートスタイルの統一
+    "RUF", # Ruff固有のルール
+]
+# 無視するルール
+ignore = [
+    "E203",  # E203: コロンの前に空白がある（pycodestyle）
+    "D403",  # D403: Docstring の先頭を大文字で始める（pydocstyle）
+    "D413",  # D413: Docstring の最後のセクションの後に空行がない（pydocstyle）
+]
 
-[tool.mypy]
-python_version = "3.13"
-ignore_missing_imports = false
-disallow_untyped_defs = false
-check_untyped_defs = true
-warn_unused_ignores = true
-warn_no_return = true
-warn_unreachable = true
-warn_no_explicit_any = true
+[tool.ruff.lint.isort]
+# importの並び順設定
+known-first-party = ["."] # first-partyとして扱うモジュール
+force-single-line = false # importを1行1モジュールに強制しない
+lines-after-imports = 2 # import群の後に空ける行数
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10 # 許容する循環的複雑度の上限
+
+[tool.ruff.lint.pylint]
+max-args = 8 # 関数が受け取れる引数の上限
+
+[tool.pyright]
+pythonVersion = "3.14"
+typeCheckingMode = "basic" # 型チェックモード (basic: 基本的な型チェック, strict: 厳密な型チェック)
+include = ["src"]
+# 参照しているモジュールの階層が異なる場合に追加で参照するディレクトリを指定する
+extraPaths = ["src/common"]
+# pyright のチェックから除外するものを指定する
+exclude = ["**/__pycache__", "**/.venv", "tests"]
+reportMissingImports = true
+reportUnusedImport = "warning"

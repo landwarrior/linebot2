@@ -1,3 +1,5 @@
+"""アクション."""
+
 import datetime
 import json
 import logging
@@ -9,10 +11,11 @@ import requests
 from bs4 import BeautifulSoup
 from decos import log
 
+
 LOGGER = logging.getLogger(name="Lambda")
 
 # 日本時間に調整
-NOW = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=9)
+NOW = datetime.datetime.now(datetime.UTC) + datetime.timedelta(hours=9)
 # 1日と3分前を前日とする
 YESTERDAY = NOW - datetime.timedelta(days=1) - datetime.timedelta(minutes=3)
 YESTERDAY = datetime.datetime(
@@ -42,6 +45,8 @@ def get_text(item, tag_name: str) -> str:
 
 
 class Actions:
+    """アクションクラス."""
+
     @classmethod
     @log(LOGGER)
     async def aitNewAll(cls, *_) -> list:
@@ -68,7 +73,7 @@ class Actions:
                     if get_text(child, "title").startswith("PR： "):
                         continue
                     pub_date = datetime.datetime.strptime(get_text(child, "pubdate")[0:25], "%a, %d %b %Y %H:%M:%S")
-                    if YESTERDAY <= pub_date:
+                    if pub_date >= YESTERDAY:
                         content = {
                             "title": get_text(child, "title"),
                             "link": get_text(child, "link"),
@@ -133,7 +138,7 @@ class Actions:
             for child in root[0]:
                 if "item" in child.tag.lower():
                     pub_date = datetime.datetime.strptime(get_text(child, "pubdate")[0:25], "%a, %d %b %Y %H:%M:%S")
-                    if YESTERDAY <= pub_date:
+                    if pub_date >= YESTERDAY:
                         content = {
                             "title": get_text(child, "title"),
                             "link": get_text(child, "link"),
@@ -166,7 +171,7 @@ class Actions:
                 if "item" in child.tag.lower():
                     pub_date = datetime.datetime.strptime(get_text(child, "pubdate")[0:25], "%a, %d %b %Y %H:%M:%S")
                     title = get_text(child, "title")
-                    if YESTERDAY <= pub_date and not title.startswith("PR："):
+                    if pub_date >= YESTERDAY and not title.startswith("PR："):
                         content = {
                             "title": title,
                             "link": get_text(child, "link"),
@@ -201,7 +206,7 @@ class Actions:
                         published = li.select("a")[0].select("span.left_area")[0].text.strip()
                         dt_published = datetime.datetime.strptime(published, "%Y-%m-%d %H:%M")
                         title = li.select("a")[0].select("span.right_area")[0].text
-                        if YESTERDAY <= dt_published:
+                        if dt_published >= YESTERDAY:
                             link = li.select("a")[0].get("href")
                             content = {
                                 "title": title,
@@ -214,7 +219,7 @@ class Actions:
 
     @classmethod
     @log(LOGGER)
-    async def jpcertNotice(cls, *_) -> dict:
+    async def jpcertNotice(cls, *_) -> list:
         """注意喚起.
 
         JPCERTで当日発表された注意喚起を取得します。
@@ -410,10 +415,10 @@ class Actions:
                 if "item" in child.tag.lower():
                     if get_text(child, "title").startswith("PR:"):
                         continue
-                    if get_text(child, "title").startswith("PR： "):
+                    if get_text(child, "title").startswith("PR： "):  # noqa: RUF001
                         continue
                     pub_date = datetime.datetime.strptime(get_text(child, "pubdate")[0:25], "%a, %d %b %Y %H:%M:%S")
-                    if YESTERDAY <= pub_date:
+                    if pub_date >= YESTERDAY:
                         content = {
                             "title": get_text(child, "title"),
                             "link": get_text(child, "link"),
@@ -445,7 +450,7 @@ class Actions:
             for child in root[0]:
                 if "item" in child.tag.lower():
                     pub_date = datetime.datetime.strptime(get_text(child, "pubdate")[0:25], "%a, %d %b %Y %H:%M:%S")
-                    if YESTERDAY <= pub_date:
+                    if pub_date >= YESTERDAY:
                         content = {
                             "title": get_text(child, "title"),
                             "link": get_text(child, "link"),
@@ -510,7 +515,7 @@ class Actions:
             for child in root:
                 if "item" in child.tag.lower():
                     pub_date = datetime.datetime.strptime(get_text(child, "date")[0:19], "%Y-%m-%dT%H:%M:%S")
-                    if YESTERDAY <= pub_date:
+                    if pub_date >= YESTERDAY:
                         content = {
                             "title": get_text(child, "title"),
                             "link": get_text(child, "link"),

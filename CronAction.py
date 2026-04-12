@@ -23,6 +23,7 @@ from Actions import Actions
 from decos import log
 from message import create_content, create_header, create_message
 
+
 # 配信メッセージとして許容するメソッド群
 ITEM: dict[str, dict[str, str | bool]] = {
     "aitNewAll": {
@@ -99,16 +100,18 @@ def build_contents(value: dict, data: list, name: str) -> list:
         list: bodyのcontentsに格納する要素の配列
     """
     contents = []
-    if value.get(name, False) or ITEM[name]["must"]:
-        if data is not None and len(data) > 0:
-            contents.append(create_header(ITEM[name]["name"], None))
-            for d in data:
-                contents.append(create_content(d["title"], d["link"]))
+    if (value.get(name, False) or ITEM[name]["must"]) and data is not None and len(data) > 0:
+        contents.append(create_header(ITEM[name]["name"], None))
+        for d in data:
+            contents.append(create_content(d["title"], d["link"]))
     return contents
 
 
 class CronAction:
+    """Cron アクションクラス."""
+
     def __init__(self, dynamo):
+        """コンストラクタ."""
         self.dynamo = dynamo
 
     @log(LOGGER)
@@ -116,7 +119,7 @@ class CronAction:
         """ユーザーごとにまとめて配信する."""
         user_settings = {}
 
-        for item in self.dynamo.scan(**{"TableName": "users"})["Items"]:
+        for item in self.dynamo.scan(TableName="users")["Items"]:
             # 配信を有効にしているユーザーの情報を取得
             if item["enabled"]["BOOL"]:
                 user_settings[item["user_id"]["S"]] = {

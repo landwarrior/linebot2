@@ -32,9 +32,11 @@ import logging
 import os
 
 import boto3
+
 import requests
 from CronAction import CronAction
 from ReplyAction import ReplyAction
+
 
 LOGGER = logging.getLogger(name="Lambda")
 LOGGER.setLevel(logging.INFO)
@@ -120,7 +122,7 @@ def update_user(user_id: str, params: dict) -> None:
         }
     """
     items = {}
-    for item in dynamo.scan(**{"TableName": "users"})["Items"]:
+    for item in dynamo.scan(TableName="users")["Items"]:
         if user_id == item["user_id"]["S"]:
             items.update(item)
     param = {"TableName": "users", "Item": items}
@@ -222,15 +224,21 @@ def lambda_handler(event, context):  # noqa: C901
     # else:
     #     return respond(ValueError('Unsupported method "{}"'.format(operation)))
     # LINE follow user
-    if isinstance(body, dict) and body.get("events", [{"type": ""}])[0]["type"] == "follow":
-        if body["events"][0]["source"]["type"] == "user":
-            user_id = body["events"][0]["source"]["userId"]
-            add_user(user_id)
+    if (
+        isinstance(body, dict)
+        and body.get("events", [{"type": ""}])[0]["type"] == "follow"
+        and body["events"][0]["source"]["type"] == "user"
+    ):
+        user_id = body["events"][0]["source"]["userId"]
+        add_user(user_id)
     # LINE unfollow user
-    if isinstance(body, dict) and body.get("events", [{"type": ""}])[0]["type"] == "unfollow":
-        if body["events"][0]["source"]["type"] == "user":
-            user_id = body["events"][0]["source"]["userId"]
-            delete_user(user_id)
+    if (
+        isinstance(body, dict)
+        and body.get("events", [{"type": ""}])[0]["type"] == "unfollow"
+        and body["events"][0]["source"]["type"] == "user"
+    ):
+        user_id = body["events"][0]["source"]["userId"]
+        delete_user(user_id)
 
     text = ""
     # LINE webhook
