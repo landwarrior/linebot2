@@ -125,6 +125,9 @@ def update_user(user_id: str, params: dict) -> None:
     for item in dynamo.scan(TableName="users")["Items"]:
         if user_id == item["user_id"]["S"]:
             items.update(item)
+    # 配信をやめた項目のキーは洗い替えで落とす
+    for obsolete in ("uxmilk", "tech_crunch_jp_enabled", "tech_republic_jp_enabled"):
+        items.pop(obsolete, None)
     param = {"TableName": "users", "Item": items}
     param["Item"].update(params)
     # dynamo.update_item(**param)
@@ -170,12 +173,6 @@ def toggle_itmedia_news(enabled: bool) -> None:
 def toggle_zdjapan(enabled: bool) -> None:
     """ZDNet Japanの新着の定期実行有効化、もしくは無効化."""
     params = {"zdjapan_enabled": {"BOOL": enabled}}
-    update_user(USER_ID, params)
-
-
-def toggle_uxmilk(enabled: bool) -> None:
-    """UX MILKの新着の定期実行有効化、もしくは無効化."""
-    params = {"uxmilk": {"BOOL": enabled}}
     update_user(USER_ID, params)
 
 
@@ -291,15 +288,9 @@ def lambda_handler(event, context):  # noqa: C901
         toggle_zdjapan(False)
         reply_message("ZDNet Japan 最新情報 総合を無効にしました")
     elif len(args) > 0 and args[0] == "6有効":
-        toggle_uxmilk(True)
-        reply_message("UX MILK の最新ニュースを有効にしました")
-    elif len(args) > 0 and args[0] == "6無効":
-        toggle_uxmilk(False)
-        reply_message("UX MILK の最新ニュースを無効にしました")
-    elif len(args) > 0 and args[0] == "7有効":
         toggle_techTarget(True)
         reply_message("TechTarget Japanの最新記事一覧を有効にしました")
-    elif len(args) > 0 and args[0] == "7無効":
+    elif len(args) > 0 and args[0] == "6無効":
         toggle_techTarget(False)
         reply_message("TechTarget Japanの最新記事一覧を無効にしました")
     else:

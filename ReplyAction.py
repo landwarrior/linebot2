@@ -51,10 +51,6 @@ ITEM = {
         "name": "Tech Crunch Japanのニュース一覧",
         "must": ["Tech", "Crunch", "ニュース"],
     },
-    "uxmilk": {
-        "name": "UX MILKのニュース一覧",
-        "must": ["UX", "MILK", "ニュース"],
-    },
     "weeklyReport": {
         "name": "JPCERT Weekly Report",
         "must": ["JPCERT", "Report"],
@@ -245,14 +241,10 @@ AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36"""
                 is_enable = bool(item.get("zdjapan_enabled", {}).get("BOOL", False))
                 postback = "5無効" if is_enable else "5有効"
                 contents.append(create_content2("(5)ZDNet Japan 最新情報 総合", is_enable, postback))
-                # UX MILK新着
-                is_enable = bool(item.get("uxmilk", {}).get("BOOL", False))
-                postback = "6無効" if is_enable else "6有効"
-                contents.append(create_content2("(6)UX MILK の最新ニュース", is_enable, postback))
                 # TechTarget Japan最新記事
                 is_enable = bool(item.get("techTarget", {}).get("BOOL", False))
-                postback = "7無効" if is_enable else "7有効"
-                contents.append(create_content2("(7)TechTarget Japanの最新記事一覧", is_enable, postback))
+                postback = "6無効" if is_enable else "6有効"
+                contents.append(create_content2("(6)TechTarget Japanの最新記事一覧", is_enable, postback))
         footer = create_footer(
             """\
 定期実行が無効の場合、有効なものがあってもプッシュ通知されません。

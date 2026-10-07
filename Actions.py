@@ -431,38 +431,6 @@ class Actions:
 
     @classmethod
     @log(LOGGER)
-    async def uxmilk(cls, *_) -> list:
-        """UX MILKのニュース一覧.
-
-        UX MILKからニュースを取得します。
-
-        Returns:
-            list: 辞書を格納した配列を返す。エラー発生時、Noneを返す
-            [
-                {'title': '<記事のタイトル>', 'link': '<記事のリンク>'}, ...
-            ]
-        """
-        url = "https://uxmilk.jp/feed"
-        LOGGER.debug(f"GET {url} header: {HEADER}")
-        contents = []
-        try:
-            res = requests.get(url, headers=HEADER)
-            root = ET.fromstring(res.content.decode("utf8"))
-            for child in root[0]:
-                if "item" in child.tag.lower():
-                    pub_date = datetime.datetime.strptime(get_text(child, "pubdate")[0:25], "%a, %d %b %Y %H:%M:%S")
-                    if pub_date >= YESTERDAY:
-                        content = {
-                            "title": get_text(child, "title"),
-                            "link": get_text(child, "link"),
-                        }
-                        contents.append(content)
-        except Exception:
-            LOGGER.error(f"{traceback.format_exc()}")
-        return contents
-
-    @classmethod
-    @log(LOGGER)
     async def weeklyReport(cls, *_) -> list:
         """JPCERT Weekly Report.
 

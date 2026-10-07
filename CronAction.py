@@ -47,10 +47,6 @@ ITEM: dict[str, dict[str, str | bool]] = {
         "name": "Tech Crunch Japanのニュース一覧",
         "must": False,
     },
-    "uxmilk": {
-        "name": "UX MILKのニュース一覧",
-        "must": False,
-    },
     "zdjapan": {
         "name": "ZDNet Japan 最新情報 総合",
         "must": False,
@@ -128,7 +124,6 @@ class CronAction:
                     "aitNewAll": item.get("ait_new_all_enabled", {}).get("BOOL", False),
                     "itmediaNews": item.get("itmedia_news_enabled", {}).get("BOOL", False),
                     "smartJp": item.get("smart_jp_enabled", {}).get("BOOL", False),
-                    "uxmilk": item.get("uxmilk", {}).get("BOOL", False),
                     "zdjapan": item.get("zdjapan_enabled", {}).get("BOOL", False),
                     "techTarget": item.get("techTarget", {}).get("BOOL", False),
                 }
@@ -136,7 +131,6 @@ class CronAction:
         aitNewAll = await Actions.aitNewAll()
         itmediaNews = await Actions.itmediaNews()
         smartJp = await Actions.smartJp()
-        uxmilk = await Actions.uxmilk()
         zdjapan = await Actions.zdjapan()
         techTarget = await Actions.techTarget()
         jpcertAlert = await Actions.jpcertAlert()
@@ -150,7 +144,6 @@ class CronAction:
             contents.extend(build_contents(value, aitNewAll, "aitNewAll"))
             contents.extend(build_contents(value, itmediaNews, "itmediaNews"))
             contents.extend(build_contents(value, smartJp, "smartJp"))
-            contents.extend(build_contents(value, uxmilk, "uxmilk"))
             contents.extend(build_contents(value, zdjapan, "zdjapan"))
             contents.extend(build_contents(value, techTarget, "techTarget"))
             contents.extend(build_contents(value, jpcertAlert, "jpcertAlert"))
