@@ -9,6 +9,7 @@ import xml.etree.ElementTree as ET
 
 import requests
 from bs4 import BeautifulSoup
+
 from decos import log
 
 
