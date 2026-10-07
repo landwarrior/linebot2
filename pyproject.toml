@@ -38,6 +38,7 @@ ignore = [
     "E203",  # E203: コロンの前に空白がある（pycodestyle）
     "D403",  # D403: Docstring の先頭を大文字で始める（pydocstyle）
     "D413",  # D413: Docstring の最後のセクションの後に空行がない（pydocstyle）
+    "SIM112", # SIM112: 環境変数を大文字で扱うべき（flake8-simplify）
 ]
 
 [tool.ruff.lint.isort]
@@ -55,9 +56,7 @@ max-args = 8 # 関数が受け取れる引数の上限
 [tool.pyright]
 pythonVersion = "3.14"
 typeCheckingMode = "basic" # 型チェックモード (basic: 基本的な型チェック, strict: 厳密な型チェック)
-include = ["src"]
-# 参照しているモジュールの階層が異なる場合に追加で参照するディレクトリを指定する
-extraPaths = ["src/common"]
+include = ["*.py", "**/*.py"] # チェック対象のファイルパターン
 # pyright のチェックから除外するものを指定する
 exclude = ["**/__pycache__", "**/.venv", "tests"]
 reportMissingImports = true

@@ -1,16 +1,38 @@
 # linebot2
 
-DynamoDBを使ったLINE Botの本格的なコードにしたいやつ
+DynamoDB を使った LINE Bot のコードです。
 
-以下のようなコマンドを実行して pip install する
+## ローカルでの解析
 
-```sh
-py -m pip install -r requirements.txt -t .
-```
-
-ローカル環境では venv 環境を準備して同じように pip install すればいい。  
-ただし、 boto3 等の AWS Lambda 固有のパッケージが見つからないと出てしまうので、以下のコマンドで venv にも pip install を行う。
+静的解析用に venv を作り、依存パッケージをインストールします。  
+boto3 は Lambda のランタイムに含まれているため、`requirements.txt` には書いてありません。  
+解析するときは、venv へ別途インストールします。
 
 ```sh
+py -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
 pip install boto3 boto3-stubs[dynamodb,events]
 ```
+
+## Lambda へ上げる zip
+
+環境変数は Lambda 関数の Web 画面上で設定を行っている前提です。
+
+プロジェクト直下で `package_lambda.bat` を実行します。  
+このバッチファイルが `package_lambda.ps1` を起動します。
+
+```sh
+package_lambda.bat
+```
+
+スクリプトは `build/` を作成し、Linux 向けの依存パッケージをそこへインストールします。  
+続けて、自作の `.py` を `build/` にコピーし、その中身を `function.zip` にまとめます。  
+`lambda_function.py` は zip の直下に入ります。  
+`build/` と `function.zip` は Git の管理対象外です。
+
+`package_lambda.ps1` の先頭にある `$LambdaPython` と `$LambdaArch` は、コンソールに表示されているランタイムとアーキテクチャに合わせます。  
+arm64 の関数では、`$LambdaArch = "arm64"` にします。
+
+できた `function.zip` を Lambda コンソールからアップロードします。  
+ハンドラは `lambda_function.lambda_handler` です。
