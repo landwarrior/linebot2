@@ -20,7 +20,8 @@ $sources = @(
     "CronAction.py",
     "ReplyAction.py",
     "decos.py",
-    "message.py"
+    "message.py",
+    "mylogger.py"
 )
 
 if (Test-Path $build) {

@@ -35,16 +35,15 @@ import boto3
 import requests
 
 from CronAction import CronAction
+from mylogger import begin_log_scope, build_stream_handler
 from ReplyAction import ReplyAction
 
 
 LOGGER = logging.getLogger(name="Lambda")
-LOGGER.setLevel(logging.INFO)
-stream_handler = logging.StreamHandler()
-stream_handler.setLevel(logging.INFO)
-formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s [%(filename)s in %(lineno)d]")
-stream_handler.setFormatter(formatter)
-LOGGER.addHandler(stream_handler)
+LOGGER.setLevel(logging.DEBUG)
+# Lambda のルートロガーへ伝播させると、CloudWatch に同じ行が 2 回出る.
+LOGGER.propagate = False
+LOGGER.addHandler(build_stream_handler())
 
 dynamo = boto3.client("dynamodb")
 
@@ -62,10 +61,13 @@ USER_ID = ""
 
 
 def reply_message(message: str) -> None:
-    """返信.
+    """文字列を LINE のテキストメッセージとして返信する.
+
+    渡した文字列を {"type": "text", "text": message} に包んで Reply API へ送る.
+    設定変更の完了通知など、一文で足りる応答に使う.
 
     Args:
-        message (str): 送信するメッセージ
+        message (str): 返信する本文
     """
     headers = {
         "Content-Type": "application/json",
@@ -81,15 +83,19 @@ def reply_message(message: str) -> None:
             }
         ],
     }
+    LOGGER.info(f"[REQUEST] {url}, param: {json.dumps(payload, ensure_ascii=False)}")
     res = requests.post(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
     LOGGER.info(f"[RESPONSE] [STATUS]{res.status_code} [HEADER]{res.headers} [CONTENT]{res.content}")
 
 
 def reply(message: dict) -> None:
-    """返信.
+    """組み立て済みの LINE メッセージを返信する.
+
+    Flex Message など、すでに LINE のメッセージオブジェクトになっている dict を Reply API へそのまま送る.
+    コマンド一覧や記事一覧の応答に使う.
 
     Args:
-        message (dict): 返信する辞書データ
+        message (dict): LINE のメッセージオブジェクト
     """
     headers = {
         "Content-Type": "application/json",
@@ -97,6 +103,7 @@ def reply(message: dict) -> None:
     }
     url = "https://api.line.me/v2/bot/message/reply"
     payload = {"replyToken": TOKEN, "messages": [message]}
+    LOGGER.info(f"[REQUEST] {url}, param: {json.dumps(payload, ensure_ascii=False)}")
     res = requests.post(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
     LOGGER.info(f"[RESPONSE] [STATUS]{res.status_code} [HEADER]{res.headers} [CONTENT]{res.content}")
 
@@ -193,6 +200,7 @@ def lambda_handler(event, context):  # noqa: C901
     DynamoDB API as a JSON body.
     """
     global TOKEN, USER_ID
+    begin_log_scope()
     LOGGER.info("--LAMBDA START--")
     LOGGER.info(f"event: {json.dumps(event)}")
     LOGGER.info(f"context: {context}")

@@ -14,6 +14,7 @@
 }
 """
 
+import datetime
 import json
 import logging
 import os
@@ -71,27 +72,84 @@ ITEM: dict[str, dict[str, str | bool]] = {
 
 LOGGER = logging.getLogger(name="Lambda")
 
+# Webhook には含めない配信
+WEBHOOK_EXCLUDED = {"jpcertAlert", "jpcertNotice", "weeklyReport"}
 
-def push(user_list: list, message: dict) -> None:
-    """プッシュ通知する."""
-    if not user_list:
+
+def push(user_id: str, message: dict) -> None:
+    """プッシュ通知する.
+
+    Args:
+        user_id (str): 送信先のユーザー ID.
+        message (dict): 送信するメッセージ.
+    """
+    if not user_id:
         # 送信先がなければ何もしない
         return
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {os.environ['access_token']}",
     }
-    url = "https://api.line.me/v2/bot/message/multicast"
-    payload = {"to": user_list, "messages": [message]}
-    LOGGER.info(f"[REQUEST] param: {json.dumps(payload)}")
-    res = requests.post(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
+    url = "https://api.line.me/v2/bot/message/push"
+    payload = {"to": user_id, "messages": [message]}
+    LOGGER.info(f"[REQUEST] param: {json.dumps(payload, ensure_ascii=False)}")
+    res = requests.post(url, json=payload, headers=headers)
     LOGGER.info(f"[RESPONSE] [STATUS]{res.status_code} [HEADER]{res.headers} [CONTENT]{res.content}")
+
+
+def build_news_for_webhook(value: dict, data: list | None, name: str) -> dict | None:
+    """Webhook 用に、サイトごとの記事一覧を作る.
+
+    配信対象外、Webhook の除外対象、または記事がなければ None を返す。
+
+    Args:
+        value (dict): ユーザーの配信設定.
+        data (list | None): サイトから取得した記事の配列.
+        name (str): 配信対象の識別子.
+    """
+    if name in WEBHOOK_EXCLUDED:
+        return None
+    if not ((value.get(name, False) or ITEM[name]["must"]) and data is not None and len(data) > 0):
+        return None
+    items = [{"title": article["title"], "url": article["link"]} for article in data]
+    return {"site": ITEM[name]["name"], "items": items}
+
+
+def notify_webhook(user_id: str, news: list) -> None:
+    """特定ユーザー向けに別 Webhook へ送る.
+
+    送信失敗しても LINE 配信は止めない。
+
+    Args:
+        user_id (str): 送信先のユーザー ID.
+        news (list): サイトごとの記事一覧.
+    """
+    if not news:
+        return
+    url = os.environ["webhook_url"]
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {os.environ['webhook_token']}",
+    }
+    today = (datetime.datetime.now(datetime.UTC) + datetime.timedelta(hours=9)).strftime("%Y/%m/%d")
+    payload = {"to": user_id, "date": today, "news": news}
+    LOGGER.info(f"[WEBHOOK] param: {json.dumps(payload, ensure_ascii=False)}")
+    try:
+        res = requests.post(url, json=payload, timeout=10, headers=headers)
+        LOGGER.info(f"[WEBHOOK] [STATUS]{res.status_code} [CONTENT]{res.content}")
+    except requests.RequestException:
+        LOGGER.exception("[WEBHOOK] request failed")
 
 
 def build_contents(value: dict, data: list, name: str) -> list:
     """LINEの配信メッセージのbody部に挿入するための要素を生成する.
 
     特になければ空の配列を返す。
+
+    Args:
+        value (dict): ユーザーの配信設定.
+        data (list): サイトから取得した記事の配列.
+        name (str): 配信対象の識別子.
 
     Returns:
         list: bodyのcontentsに格納する要素の配列
@@ -108,7 +166,11 @@ class CronAction:
     """Cron アクションクラス."""
 
     def __init__(self, dynamo):
-        """コンストラクタ."""
+        """コンストラクタ.
+
+        Args:
+            dynamo: DynamoDB クライアント.
+        """
         self.dynamo = dynamo
 
     @log(LOGGER)
@@ -137,18 +199,27 @@ class CronAction:
         jpcertNotice = await Actions.jpcertNotice()
         weeklyReport = await Actions.weeklyReport()
 
+        sources = [
+            ("aitRanking", aitRanking),
+            ("aitNewAll", aitNewAll),
+            ("itmediaNews", itmediaNews),
+            ("smartJp", smartJp),
+            ("zdjapan", zdjapan),
+            ("techTarget", techTarget),
+            ("jpcertAlert", jpcertAlert),
+            ("jpcertNotice", jpcertNotice),
+            ("weeklyReport", weeklyReport),
+        ]
         for user_id, value in user_settings.items():
             # ユーザーごとにコンテンツを生成し、配信
             contents = []
-            contents.extend(build_contents(value, aitRanking, "aitRanking"))
-            contents.extend(build_contents(value, aitNewAll, "aitNewAll"))
-            contents.extend(build_contents(value, itmediaNews, "itmediaNews"))
-            contents.extend(build_contents(value, smartJp, "smartJp"))
-            contents.extend(build_contents(value, zdjapan, "zdjapan"))
-            contents.extend(build_contents(value, techTarget, "techTarget"))
-            contents.extend(build_contents(value, jpcertAlert, "jpcertAlert"))
-            contents.extend(build_contents(value, jpcertNotice, "jpcertNotice"))
-            contents.extend(build_contents(value, weeklyReport, "weeklyReport"))
+            news_for_webhook = []
+            for name, data in sources:
+                contents.extend(build_contents(value, data, name))
+                site_news = build_news_for_webhook(value, data, name)
+                if site_news:
+                    news_for_webhook.append(site_news)
             header = create_header("定期実行", None)
             if len(contents) > 0:
-                push([user_id], create_message(header, contents, None))
+                push(user_id, create_message(header, contents, None))
+                notify_webhook(user_id, news_for_webhook)
