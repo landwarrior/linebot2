@@ -49,7 +49,12 @@ def create_content(description: str, uri: str | None) -> dict:
 def create_content2(description: str, is_enable: bool, postback: str) -> dict:
     """メッセージのcontentを作成する.
 
-    定期実行の確認用
+    定期実行の確認用。
+
+    Args:
+        description (str): 説明.
+        is_enable (bool): ON/OFFの状態.
+        postback (str): ポストバックのデータ.
     """
     content = {
         "type": "box",
@@ -88,7 +93,11 @@ def create_content2(description: str, is_enable: bool, postback: str) -> dict:
 
 
 def create_footer(text: str) -> dict:
-    """メッセージのフッターを作成する."""
+    """メッセージのフッターを作成する.
+
+    Args:
+        text (str): フッターのテキスト.
+    """
     footer = {
         "type": "box",
         "contents": [

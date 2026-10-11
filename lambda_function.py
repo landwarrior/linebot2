@@ -1,5 +1,6 @@
-"""DynamoDBを使って色々やる.
+"""LINE bot 用の AWS Lambda 関数.
 
+DynamoDB の使い方は以下。
 GET:
 {"TableName": "users"}
 POST:
@@ -47,9 +48,6 @@ LOGGER.addHandler(build_stream_handler())
 
 dynamo = boto3.client("dynamodb")
 
-TOKEN = ""
-USER_ID = ""
-
 # def respond(err, res=None):
 #     return {
 #         "statusCode": "400" if err else "200",
@@ -60,7 +58,7 @@ USER_ID = ""
 #     }
 
 
-def reply_message(message: str) -> None:
+def reply_message(message: str, reply_token: str) -> None:
     """文字列を LINE のテキストメッセージとして返信する.
 
     渡した文字列を {"type": "text", "text": message} に包んで Reply API へ送る.
@@ -68,6 +66,7 @@ def reply_message(message: str) -> None:
 
     Args:
         message (str): 返信する本文
+        reply_token (str): LINE の Reply API で必要なトークン
     """
     headers = {
         "Content-Type": "application/json",
@@ -75,7 +74,7 @@ def reply_message(message: str) -> None:
     }
     url = "https://api.line.me/v2/bot/message/reply"
     payload = {
-        "replyToken": TOKEN,
+        "replyToken": reply_token,
         "messages": [
             {
                 "type": "text",
@@ -88,7 +87,7 @@ def reply_message(message: str) -> None:
     LOGGER.info(f"[RESPONSE] [STATUS]{res.status_code} [HEADER]{res.headers} [CONTENT]{res.content}")
 
 
-def reply(message: dict) -> None:
+def reply(message: dict, reply_token: str) -> None:
     """組み立て済みの LINE メッセージを返信する.
 
     Flex Message など、すでに LINE のメッセージオブジェクトになっている dict を Reply API へそのまま送る.
@@ -96,19 +95,25 @@ def reply(message: dict) -> None:
 
     Args:
         message (dict): LINE のメッセージオブジェクト
+        reply_token (str): LINE の Reply API で必要なトークン
     """
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {os.environ['access_token']}",
     }
     url = "https://api.line.me/v2/bot/message/reply"
-    payload = {"replyToken": TOKEN, "messages": [message]}
+    payload = {"replyToken": reply_token, "messages": [message]}
     LOGGER.info(f"[REQUEST] {url}, param: {json.dumps(payload, ensure_ascii=False)}")
     res = requests.post(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
     LOGGER.info(f"[RESPONSE] [STATUS]{res.status_code} [HEADER]{res.headers} [CONTENT]{res.content}")
 
 
 def add_user(user_id: str) -> None:
+    """ユーザー追加.
+
+    Args:
+        user_id (str): 追加するユーザーID
+    """
     param = {
         "TableName": "users",
         "Item": {"user_id": {"S": user_id}, "enabled": {"BOOL": False}},
@@ -120,13 +125,13 @@ def add_user(user_id: str) -> None:
 def update_user(user_id: str, params: dict) -> None:
     """ユーザー情報更新.
 
-    :param str user_id: 対象のユーザーID
-    :param dict params: ユーザーに対して登録するパラメータを指定する
-
-        {
-            "enabled": {"BOOL": True},
-            ...
-        }
+    Args:
+        user_id (str): 対象のユーザーID
+        params (dict): ユーザーに対して登録するパラメータを指定する
+            {
+                "enabled": {"BOOL": True},
+                ...
+            }
     """
     items = {}
     for item in dynamo.scan(TableName="users")["Items"]:
@@ -142,51 +147,90 @@ def update_user(user_id: str, params: dict) -> None:
 
 
 def delete_user(user_id: str) -> None:
-    """ユーザー削除."""
+    """ユーザー削除.
+
+    Args:
+        user_id (str): 削除するユーザーID
+    """
     param = {"TableName": "users", "Key": {"user_id": {"S": user_id}}}
     dynamo.delete_item(**param)
 
 
-def toggle_teiki(enabled: bool) -> None:
-    """定期実行の有効化、もしくは無効化."""
+def toggle_teiki(enabled: bool, user_id: str) -> None:
+    """定期実行の有効化、もしくは無効化.
+
+    Args:
+        enabled (bool): True で有効化、False で無効化
+        user_id (str): 対象のユーザーID
+    """
     params = {"enabled": {"BOOL": enabled}}
-    update_user(USER_ID, params)
+    update_user(user_id, params)
 
 
-def toggle_ait(enabled: bool) -> None:
-    """アットマークITのランキングの定期実行有効化、もしくは無効化."""
+def toggle_ait(enabled: bool, user_id: str) -> None:
+    """アットマークITのランキングの定期実行有効化、もしくは無効化.
+
+    Args:
+        enabled (bool): True で有効化、False で無効化
+        user_id (str): 対象のユーザーID
+    """
     params = {"ait_enabled": {"BOOL": enabled}}
-    update_user(USER_ID, params)
+    update_user(user_id, params)
 
 
-def toggle_ait_new_all(enabled: bool) -> None:
-    """アットマークITの新着の定期実行有効化、もしくは無効化."""
+def toggle_ait_new_all(enabled: bool, user_id: str) -> None:
+    """アットマークITの新着の定期実行有効化、もしくは無効化.
+
+    Args:
+        enabled (bool): True で有効化、False で無効化
+        user_id (str): 対象のユーザーID
+    """
     params = {"ait_new_all_enabled": {"BOOL": enabled}}
-    update_user(USER_ID, params)
+    update_user(user_id, params)
 
 
-def toggle_smart_jp(enabled: bool) -> None:
-    """スマートジャパンの新着の定期実行有効化、もしくは無効化."""
+def toggle_smart_jp(enabled: bool, user_id: str) -> None:
+    """スマートジャパンの新着の定期実行有効化、もしくは無効化.
+
+    Args:
+        enabled (bool): True で有効化、False で無効化
+        user_id (str): 対象のユーザーID
+    """
     params = {"smart_jp_enabled": {"BOOL": enabled}}
-    update_user(USER_ID, params)
+    update_user(user_id, params)
 
 
-def toggle_itmedia_news(enabled: bool) -> None:
-    """ITMedia NEWSの新着の定期実行有効化、もしくは無効化."""
+def toggle_itmedia_news(enabled: bool, user_id: str) -> None:
+    """ITMedia NEWSの新着の定期実行有効化、もしくは無効化.
+
+    Args:
+        enabled (bool): True で有効化、False で無効化
+        user_id (str): 対象のユーザーID
+    """
     params = {"itmedia_news_enabled": {"BOOL": enabled}}
-    update_user(USER_ID, params)
+    update_user(user_id, params)
 
 
-def toggle_zdjapan(enabled: bool) -> None:
-    """ZDNet Japanの新着の定期実行有効化、もしくは無効化."""
+def toggle_zdjapan(enabled: bool, user_id: str) -> None:
+    """ZDNet Japanの新着の定期実行p有効化、もしくは無効化.
+
+    Args:
+        enabled (bool): True で有効化、False で無効化
+        user_id (str): 対象のユーザーID
+    """
     params = {"zdjapan_enabled": {"BOOL": enabled}}
-    update_user(USER_ID, params)
+    update_user(user_id, params)
 
 
-def toggle_techTarget(enabled: bool) -> None:
-    """TechTargetの新着の定期実行有効化、もしくは無効化."""
+def toggle_techTarget(enabled: bool, user_id: str) -> None:
+    """TechTargetの新着の定期実行有効化、もしくは無効化.
+
+    Args:
+        enabled (bool): True で有効化、False で無効化
+        user_id (str): 対象のユーザーID
+    """
     params = {"techTarget": {"BOOL": enabled}}
-    update_user(USER_ID, params)
+    update_user(user_id, params)
 
 
 def lambda_handler(event, context):  # noqa: C901
@@ -199,14 +243,14 @@ def lambda_handler(event, context):  # noqa: C901
     PUT, or DELETE request respectively, passing in the payload to the
     DynamoDB API as a JSON body.
     """
-    global TOKEN, USER_ID
     begin_log_scope()
     LOGGER.info("--LAMBDA START--")
     LOGGER.info(f"event: {json.dumps(event)}")
     LOGGER.info(f"context: {context}")
+    user_id = ""
     try:
         body = json.loads(event.get("body"))
-        USER_ID = body.get("events", [])[0]["source"]["userId"]
+        user_id = body.get("events", [])[0]["source"]["userId"]
     except Exception:
         body = {}
     LOGGER.info(f"body: {json.dumps(body)}")
@@ -249,63 +293,63 @@ def lambda_handler(event, context):  # noqa: C901
     # LINE webhook
     if isinstance(body, dict):
         for event in body.get("events", []):
-            TOKEN = event.get("replyToken", "")
+            reply_token = event.get("replyToken", "")
             text = event.get("message", {}).get("text")
             # postback の場合はメソッドのデフォルトで動作するように設定
             if event.get("postback", {}).get("data"):
                 text = event["postback"]["data"]
     text = text.replace("　", " ").replace("\n", " ")
     args = text.split(" ")
-    replyAction = ReplyAction(dynamo, USER_ID)
+    replyAction = ReplyAction(dynamo, user_id)
     if len(args) > 0 and args[0] == "コマンド":
-        reply(replyAction._help())
+        reply(replyAction._help(), reply_token)
     elif len(args) > 0 and args[0] == "定期無効":
-        toggle_teiki(False)
-        reply_message("定期実行を無効にしました")
+        toggle_teiki(False, user_id)
+        reply_message("定期実行を無効にしました", reply_token)
     elif len(args) > 0 and args[0] == "定期有効":
-        toggle_teiki(True)
-        reply_message("定期実行を有効にしました")
+        toggle_teiki(True, user_id)
+        reply_message("定期実行を有効にしました", reply_token)
     elif len(args) > 0 and args[0] == "1有効":
-        toggle_ait(True)
-        reply_message("アットマークITランキングを有効にしました")
+        toggle_ait(True, user_id)
+        reply_message("アットマークITランキングを有効にしました", reply_token)
     elif len(args) > 0 and args[0] == "1無効":
-        toggle_ait(False)
-        reply_message("アットマークITランキングを無効にしました")
+        toggle_ait(False, user_id)
+        reply_message("アットマークITランキングを無効にしました", reply_token)
     elif len(args) > 0 and args[0] == "2有効":
-        toggle_ait_new_all(True)
-        reply_message("アットマークITの全フォーラムの新着記事を有効にしました")
+        toggle_ait_new_all(True, user_id)
+        reply_message("アットマークITの全フォーラムの新着記事を有効にしました", reply_token)
     elif len(args) > 0 and args[0] == "2無効":
-        toggle_ait_new_all(False)
-        reply_message("アットマークITの全フォーラムの新着記事を無効にしました")
+        toggle_ait_new_all(False, user_id)
+        reply_message("アットマークITの全フォーラムの新着記事を無効にしました", reply_token)
     elif len(args) > 0 and args[0] == "3有効":
-        toggle_smart_jp(True)
-        reply_message("スマートジャパンの新着記事を有効にしました")
+        toggle_smart_jp(True, user_id)
+        reply_message("スマートジャパンの新着記事を有効にしました", reply_token)
     elif len(args) > 0 and args[0] == "3無効":
-        toggle_smart_jp(False)
-        reply_message("スマートジャパンの新着記事を無効にしました")
+        toggle_smart_jp(False, user_id)
+        reply_message("スマートジャパンの新着記事を無効にしました", reply_token)
     elif len(args) > 0 and args[0] == "4有効":
-        toggle_itmedia_news(True)
-        reply_message("ITmedia NEWS 最新記事一覧を有効にしました")
+        toggle_itmedia_news(True, user_id)
+        reply_message("ITmedia NEWS 最新記事一覧を有効にしました", reply_token)
     elif len(args) > 0 and args[0] == "4無効":
-        toggle_itmedia_news(False)
-        reply_message("ITmedia NEWS 最新記事一覧を無効にしました")
+        toggle_itmedia_news(False, user_id)
+        reply_message("ITmedia NEWS 最新記事一覧を無効にしました", reply_token)
     elif len(args) > 0 and args[0] == "5有効":
-        toggle_zdjapan(True)
-        reply_message("ZDNet Japan 最新情報 総合を有効にしました")
+        toggle_zdjapan(True, user_id)
+        reply_message("ZDNet Japan 最新情報 総合を有効にしました", reply_token)
     elif len(args) > 0 and args[0] == "5無効":
-        toggle_zdjapan(False)
-        reply_message("ZDNet Japan 最新情報 総合を無効にしました")
+        toggle_zdjapan(False, user_id)
+        reply_message("ZDNet Japan 最新情報 総合を無効にしました", reply_token)
     elif len(args) > 0 and args[0] == "6有効":
-        toggle_techTarget(True)
-        reply_message("TechTarget Japanの最新記事一覧を有効にしました")
+        toggle_techTarget(True, user_id)
+        reply_message("TechTarget Japanの最新記事一覧を有効にしました", reply_token)
     elif len(args) > 0 and args[0] == "6無効":
-        toggle_techTarget(False)
-        reply_message("TechTarget Japanの最新記事一覧を無効にしました")
+        toggle_techTarget(False, user_id)
+        reply_message("TechTarget Japanの最新記事一覧を無効にしました", reply_token)
     else:
         func = replyAction._method_search("".join(args))
         if func:
             LOGGER.info(f"method: {func}, param: {args[1:]}")
-            asyncio.run(reply_action(replyAction, func, args[1:]))
+            asyncio.run(reply_action(replyAction, func, args[1:], reply_token))
 
     payload = {
         "messages": [
@@ -325,8 +369,15 @@ def lambda_handler(event, context):  # noqa: C901
     return ret
 
 
-async def reply_action(replyAction, func, args):
-    """メソッドでasyncを使っているため切り出し."""
+async def reply_action(replyAction: ReplyAction, func: str, args: list, reply_token: str):
+    """メソッドでasyncを使っているため切り出し.
+
+    Args:
+        replyAction (ReplyAction): ReplyActionのインスタンス
+        func (str): 実行するメソッド名
+        args (list): メソッドに渡す引数のリスト
+        reply_token (str): LINE の Reply API で必要なトークン
+    """
     message = await replyAction.executeAction(func, args)
     if message:
-        reply(message)
+        reply(message, reply_token)

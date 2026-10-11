@@ -26,7 +26,8 @@
 		"venv",
 		"whatsdate",
 		"wkrp",
-		"zdjapan"
+		"zdjapan",
+		"mylogger"
 	],
 	// flagWords - 常に誤りとみなされる単語のリスト
 	// これは、不適切な言葉やよくあるスペルミスに対処するのに役立ちます。
